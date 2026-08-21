@@ -1,4 +1,4 @@
-﻿import {
+import {
   View,
   Text,
   TouchableOpacity,
@@ -9,16 +9,19 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Svg, { Circle } from "react-native-svg";
 
 import { saveWorkout } from "../lib/workoutStorage";
 import { getPremiumStatus } from "../lib/premiumStorage";
+import {
+  getWorkoutType,
+} from "../lib/workoutTypes";
 
 const { width } = Dimensions.get("window");
 
-const TARGET = 200;
+// Le target d�pend maintenant de l'activit� s�lectionn�e.
 
 const RING_SIZE = Math.min(width - 72, 310);
 
@@ -36,9 +39,18 @@ const AnimatedCircle =
 export default function WorkoutScreen() {
   const router = useRouter();
 
+  const { workoutId } = useLocalSearchParams();
+
+  const workout = getWorkoutType(
+    workoutId || "squats"
+  );
+
+  const TARGET =
+    workout.target ?? 0;
+
   /*
    * ============================================================
-   * Ã‰TAT DE LA SÃ‰ANCE
+   * ÉTAT DE LA SÉANCE
    * ============================================================
    */
 
@@ -59,66 +71,77 @@ export default function WorkoutScreen() {
 
   /*
    * ============================================================
-   * VÃ‰RIFICATION PREMIUM
+   * V�RIFICATION PREMIUM
    * ============================================================
    */
 
   useEffect(() => {
+    let mounted = true;
+
     const checkPremium = async () => {
       try {
-        const premium =
-          await getPremiumStatus();
+        const status = await getPremiumStatus();
 
-        setIsPremium(premium);
+        if (!mounted) {
+          return;
+        }
+
+        setIsPremium(status);
+        setPremiumChecked(true);
       } catch (error) {
         console.log(
-          "Impossible de vÃ©rifier le statut Premium :",
+          "Erreur lors de la v�rification Premium :",
           error
         );
 
+        if (!mounted) {
+          return;
+        }
+
         setIsPremium(false);
-      } finally {
         setPremiumChecked(true);
       }
     };
 
     checkPremium();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  useEffect(() => {
-    if (
-      premiumChecked &&
-      !isPremium
-    ) {
-      router.replace("/premium");
-    }
-  }, [
-    premiumChecked,
-    isPremium,
-    router,
-  ]);
-
   /*
+   * ============================================================
+   * REDIRECTION UTILISATEUR NON PREMIUM
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (!premiumChecked || isPremium) {
+      return;
+    }
+
+    router.replace("/premium");
+  }, [premiumChecked, isPremium, router]);
+
+/*
    * ============================================================
    * ANIMATIONS
    * ============================================================
    */
 
-  const progressAnim = useRef(
-    new Animated.Value(0)
-  ).current;
+  const progressAnim =
+    useRef(new Animated.Value(0)).current;
 
-  const scaleAnim = useRef(
-    new Animated.Value(1)
-  ).current;
+  const scaleAnim =
+    useRef(new Animated.Value(1)).current;
 
-  const contentOpacity = useRef(
-    new Animated.Value(1)
-  ).current;
+  const contentOpacity =
+    useRef(new Animated.Value(1)).current;
 
   /*
    * ============================================================
-   * CHRONOMÃˆTRE
+   * VÉRIFICATION PREMIUM
    * ============================================================
    */
 
@@ -128,16 +151,53 @@ export default function WorkoutScreen() {
     }
 
     const interval = setInterval(() => {
-      setTimer(
-        (previous) => previous + 1
-      );
+      setTimer((previous) => {
+        const nextTimer = previous + 1;
+
+        if (
+          workout.mode === "duration" &&
+          nextTimer >= TARGET
+        ) {
+          setIsActive(false);
+
+          setTimeout(async () => {
+            await Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Success
+            );
+
+            await saveWorkout({
+              repetitions: null,
+              distance: null,
+              duration: TARGET,
+              type: workout.name,
+              workoutId: workout.id,
+              category: workout.category,
+              unit: workout.unit,
+            });
+
+            finishWorkout();
+          }, 100);
+
+          return TARGET;
+        }
+
+        return nextTimer;
+      });
     }, 1000);
 
     return () => {
       clearInterval(interval);
     };
-  }, [isActive, isCompleted]);
-
+  }, [
+    isActive,
+    isCompleted,
+    workout.mode,
+    workout.name,
+    workout.id,
+    workout.category,
+    workout.unit,
+    TARGET,
+  ]);
   /*
    * ============================================================
    * PROGRESSION DE L'ANNEAU
@@ -145,18 +205,40 @@ export default function WorkoutScreen() {
    */
 
   useEffect(() => {
-    const progress = Math.min(
-      count / TARGET,
-      1
-    );
+    let progress = 0;
+
+    if (
+      workout.mode === "repetitions" ||
+      workout.mode === "distance" ||
+      workout.mode === "sets"
+    ) {
+      progress =
+        TARGET > 0
+          ? count / TARGET
+          : 0;
+    }
+
+    if (workout.mode === "duration") {
+      progress =
+        TARGET > 0
+          ? timer / TARGET
+          : 0;
+    }
+
+    progress = Math.min(progress, 1);
 
     Animated.timing(progressAnim, {
       toValue: progress,
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [count, progressAnim]);
-
+  }, [
+    count,
+    timer,
+    TARGET,
+    workout.mode,
+    progressAnim,
+  ]);
   /*
    * ============================================================
    * ANIMATION DU COMPTEUR
@@ -203,7 +285,7 @@ export default function WorkoutScreen() {
   };
   /*
    * ============================================================
-   * AJOUTER UNE RÃ‰PÃ‰TITION
+   * AJOUTER UNE RÉPÉTITION
    * ============================================================
    */
 
@@ -212,8 +294,31 @@ export default function WorkoutScreen() {
       return;
     }
 
+    /*
+     * ----------------------------------------------------------
+     * ACTIVIT�S � DUR�E
+     * Le chronom�tre est g�r� automatiquement.
+     * ----------------------------------------------------------
+     */
+
+    if (workout.mode === "duration") {
+      return;
+    }
+
+    let step = 1;
+
+    /*
+     * ----------------------------------------------------------
+     * VALEUR AJOUT�E SELON LE TYPE D'ACTIVIT�
+     * ----------------------------------------------------------
+     */
+
+    if (workout.mode === "distance") {
+      step = 0.1;
+    }
+
     const nextCount = Math.min(
-      count + 1,
+      count + step,
       TARGET
     );
 
@@ -226,11 +331,19 @@ export default function WorkoutScreen() {
     );
 
     /*
-     * Feedback intermÃ©diaire toutes les
-     * 25 rÃ©pÃ©titions.
+     * ----------------------------------------------------------
+     * FEEDBACK INTERM�DIAIRE
+     * ----------------------------------------------------------
      */
 
+    const isRepetition =
+      workout.mode === "repetitions";
+
+    const isDistance =
+      workout.mode === "distance";
+
     if (
+      isRepetition &&
       nextCount > 0 &&
       nextCount % 25 === 0 &&
       nextCount < TARGET
@@ -240,36 +353,57 @@ export default function WorkoutScreen() {
       );
     }
 
+    if (
+      isDistance &&
+      nextCount > 0 &&
+      Number.isInteger(nextCount) &&
+      nextCount < TARGET
+    ) {
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success
+      );
+    }
+
     /*
-     * Objectif atteint.
+     * ----------------------------------------------------------
+     * OBJECTIF ATTEINT
+     * ----------------------------------------------------------
      */
 
-    if (nextCount === TARGET) {
+    if (nextCount >= TARGET) {
+      setCount(TARGET);
       setIsActive(false);
 
       await Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success
       );
 
-      /*
-       * Sauvegarde de la sÃ©ance terminÃ©e.
-       */
-
       await saveWorkout({
-        repetitions: TARGET,
-        duration: timer,
-        type: "Squats",
+        repetitions:
+          workout.mode === "repetitions"
+            ? TARGET
+            : null,
+
+        distance:
+          workout.mode === "distance"
+            ? TARGET
+            : null,
+
+        duration: null,
+
+        type: workout.name,
+        workoutId: workout.id,
+        category: workout.category,
+        unit: workout.unit,
       });
 
       setTimeout(() => {
         finishWorkout();
       }, 500);
     }
-  };
-
-  /*
+  };  /*
    * ============================================================
-   * RETIRER UNE RÃ‰PÃ‰TITION
+   * RETIRER UNE RÉPÉTITION
    * ============================================================
    */
 
@@ -309,7 +443,7 @@ export default function WorkoutScreen() {
 
   /*
    * ============================================================
-   * FIN DE SÃ‰ANCE
+   * FIN DE SÉANCE
    * ============================================================
    */
 
@@ -364,12 +498,25 @@ export default function WorkoutScreen() {
     });
 
   const percentage = Math.round(
-    (count / TARGET) * 100
+    (
+      workout.mode === "duration"
+        ? timer / TARGET
+        : count / TARGET
+    ) * 100
   );
 
+  const displayValue =
+    workout.mode === "duration"
+      ? formatTime(timer)
+      : count;
+
+  const displayTarget =
+    workout.mode === "duration"
+      ? formatTime(TARGET)
+      : TARGET;
   /*
    * ============================================================
-   * VÃ‰RIFICATION PREMIUM EN COURS
+   * VÉRIFICATION PREMIUM EN COURS
    * ============================================================
    */
 
@@ -397,7 +544,7 @@ export default function WorkoutScreen() {
             marginTop: 12,
           }}
         >
-          VÃ©rification Premium...
+          Vérification Premium...
         </Text>
       </View>
     );
@@ -409,13 +556,10 @@ export default function WorkoutScreen() {
    * ============================================================
    */
 
-  if (!isPremium) {
-    return null;
-  }
 
   /*
    * ============================================================
-   * Ã‰CRAN DE FIN
+   * ÉCRAN DE FIN
    * ============================================================
    */
 
@@ -439,7 +583,7 @@ export default function WorkoutScreen() {
             marginBottom: 12,
           }}
         >
-          SÃ©ance terminÃ©e
+          Séance terminée
         </Text>
 
         <Text
@@ -475,7 +619,13 @@ export default function WorkoutScreen() {
                 fontSize: 15,
               }}
             >
-              RÃ©pÃ©titions
+              {workout.mode === "repetitions"
+                ? "R�p�titions"
+                : workout.mode === "distance"
+                  ? "Distance"
+                  : workout.mode === "duration"
+                    ? "Dur�e"
+                    : "S�ries"}
             </Text>
 
             <Text
@@ -485,7 +635,7 @@ export default function WorkoutScreen() {
                 fontWeight: "700",
               }}
             >
-              {count} / {TARGET}
+              {displayValue} / {displayTarget} {workout.unit}
             </Text>
           </View>
 
@@ -501,7 +651,7 @@ export default function WorkoutScreen() {
                 fontSize: 15,
               }}
             >
-              DurÃ©e
+              Dur�e
             </Text>
 
             <Text
@@ -537,7 +687,7 @@ export default function WorkoutScreen() {
               fontWeight: "800",
             }}
           >
-            Retour Ã  l'accueil
+            Retour à l'accueil
           </Text>
         </TouchableOpacity>
 
@@ -571,7 +721,7 @@ export default function WorkoutScreen() {
 
   /*
    * ============================================================
-   * Ã‰CRAN PRINCIPAL
+   * ÉCRAN PRINCIPAL
    * ============================================================
    */
 
@@ -649,7 +799,7 @@ export default function WorkoutScreen() {
                 textTransform: "uppercase",
               }}
             >
-              SÃ©ance
+              Séance
             </Text>
           </View>
 
@@ -662,7 +812,7 @@ export default function WorkoutScreen() {
         </View>
 
         {/* =====================================================
-            CHRONOMÃˆTRE
+            CHRONOMÈTRE
             ===================================================== */}
 
         <View
@@ -680,7 +830,7 @@ export default function WorkoutScreen() {
               textTransform: "uppercase",
             }}
           >
-            DurÃ©e
+            Dur�e
           </Text>
 
           <Text
@@ -764,7 +914,7 @@ export default function WorkoutScreen() {
                 letterSpacing: -3,
               }}
             >
-              {count}
+              {displayValue}
             </Text>
 
             <Text
@@ -776,7 +926,7 @@ export default function WorkoutScreen() {
                 marginTop: -4,
               }}
             >
-              / {TARGET}
+              / {displayTarget} {workout.unit}
             </Text>
 
             <Text
@@ -794,7 +944,7 @@ export default function WorkoutScreen() {
         </View>
 
         {/* =====================================================
-            CONTRÃ”LES
+            CONTRÔLES
             ===================================================== */}
 
         <View
@@ -899,13 +1049,13 @@ export default function WorkoutScreen() {
             }}
           >
             {isActive
-              ? "Appuie sur + Ã  chaque rÃ©pÃ©tition"
-              : "SÃ©ance en pause"}
+              ? "Appuie sur + à chaque répétition"
+              : "Séance en pause"}
           </Text>
         </View>
 
         {/* =====================================================
-            INFORMATIONS DE LA SÃ‰ANCE
+            INFORMATIONS DE LA SÉANCE
             ===================================================== */}
 
         <View
@@ -955,3 +1105,24 @@ export default function WorkoutScreen() {
     </LinearGradient>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

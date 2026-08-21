@@ -1,4 +1,9 @@
 import {
+  WORKOUT_LIST,
+  WORKOUT_CATEGORIES,
+} from "../lib/workoutTypes";
+
+import {
   View,
   Text,
   ScrollView,
@@ -236,7 +241,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* =====================================================
+                {/* =====================================================
             DISCIPLINES
         ===================================================== */}
 
@@ -247,60 +252,44 @@ export default function HomeScreen() {
             </Text>
 
             <Text style={styles.disciplineCount}>
-              06
+              {String(WORKOUT_LIST.length).padStart(2, "0")}
             </Text>
           </View>
 
           <View style={styles.disciplineGrid}>
-            {[
-              {
-                name: "Course",
-                icon: "walk-outline",
-                meta: "Endurance",
-              },
-              {
-                name: "Pompes",
-                icon: "fitness-outline",
-                meta: "Haut du corps",
-              },
-              {
-                name: "Squats",
-                icon: "body-outline",
-                meta: "Jambes",
-              },
-              {
-                name: "Tractions",
-                icon: "barbell-outline",
-                meta: "Dos",
-              },
-              {
-                name: "Boxe",
-                icon: "hand-left-outline",
-                meta: "Cardio",
-              },
-              {
-                name: "HIIT",
-                icon: "timer-outline",
-                meta: "Intensité",
-              },
-            ].map((discipline, index) => (
+            {WORKOUT_LIST.map((discipline) => (
               <TouchableOpacity
-                key={index}
-                onPress={() => router.push("/workout")}
-                activeOpacity={0.8}
+                key={discipline.id}
+                onPress={() =>
+                  router.push({
+                    pathname: "/workout",
+                    params: {
+                      workoutId: discipline.id,
+                    },
+                  })
+                }
+                activeOpacity={0.82}
                 style={styles.disciplineCard}
               >
                 <View style={styles.disciplineTop}>
-                  <View style={styles.disciplineIcon}>
+                  <View
+                    style={[
+                      styles.disciplineIcon,
+                      {
+                        borderColor: `${discipline.accent}30`,
+                        backgroundColor: `${discipline.accent}10`,
+                      },
+                    ]}
+                  >
                     <Ionicons
                       name={discipline.icon}
                       size={23}
-                      color="#00FF87"
+                      color={discipline.accent}
                     />
                   </View>
 
                   <Ionicons
-                    name="arrow-up-right"
+                    name="arrow-forward-outline"
                     size={17}
                     color="#59675D"
                   />
@@ -311,13 +300,12 @@ export default function HomeScreen() {
                 </Text>
 
                 <Text style={styles.disciplineMeta}>
-                  {discipline.meta}
+                  {discipline.category}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
-
         {/* =====================================================
             CITATION
         ===================================================== */}
@@ -747,3 +735,11 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 });
+
+
+
+
+
+
+
+
