@@ -40,7 +40,7 @@ const COLORS = {
 
 /*
  * ============================================================
- * Ã‰CRAN HISTORIQUE
+ * ÉCRAN HISTORIQUE
  * ============================================================
  */
 
@@ -165,12 +165,12 @@ export default function HistoryScreen() {
 
   /*
    * Recharge l'historique chaque fois que
-   * l'Ã©cran redevient actif.
+   * l'écran redevient actif.
    *
    * Important :
-   * aprÃ¨s une sÃ©ance terminÃ©e, si l'utilisateur
-   * revient ici, la nouvelle sÃ©ance apparaÃ®t
-   * immÃ©diatement.
+   * après une séance terminée, si l'utilisateur
+   * revient ici, la nouvelle séance apparaît
+   * immédiatement.
    */
 
   useFocusEffect(
@@ -266,7 +266,7 @@ export default function HistoryScreen() {
 
   /*
    * ============================================================
-   * FORMAT DURÃ‰E
+   * FORMAT DURÉE
    * ============================================================
    */
 
@@ -409,13 +409,13 @@ export default function HistoryScreen() {
         ================================================== */}
 
         <View
-          style={{
-            paddingTop: 58,
-            paddingHorizontal: 24,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
+  style={{
+    paddingTop: 22,
+    paddingHorizontal: 24,
+    flexDirection: "row",
+    alignItems: "center",
+  }}
+>
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
@@ -440,12 +440,12 @@ export default function HistoryScreen() {
           </TouchableOpacity>
 
           <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              marginRight: 46,
-            }}
-          >
+  style={{
+    flex: 1,
+    alignItems: "center",
+    marginLeft: -46,
+  }}
+>
             <Text
               style={{
                 color: COLORS.primary,
@@ -477,29 +477,30 @@ export default function HistoryScreen() {
         <View
           style={{
             marginHorizontal: 24,
-            marginTop: 30,
+        marginTop: 24,
           }}
         >
           <Text
             style={{
               color: COLORS.text,
-              fontSize: 28,
-              fontWeight: "900",
-              letterSpacing: -0.8,
+              fontSize: 30,
+fontWeight: "900",
+letterSpacing: -1,
             }}
           >
-            Tes sÃ©ances.
+            Tes séances.
           </Text>
 
           <Text
             style={{
               color: COLORS.muted,
-              fontSize: 14,
-              lineHeight: 21,
-              marginTop: 6,
+              fontSize: 13,
+lineHeight: 20,
+marginTop: 8,
+maxWidth: 320,
             }}
           >
-            Chaque sÃ©ance compte. Consulte ici
+            Chaque séance compte. Consulte ici
             tout ce que tu as accompli.
           </Text>
         </View>
@@ -522,7 +523,7 @@ export default function HistoryScreen() {
                 value={String(
                   totalSessions
                 )}
-                label="SÃ©ances"
+                label="séances"
                 icon="barbell-outline"
               
                 delay={0}/>
@@ -531,7 +532,7 @@ export default function HistoryScreen() {
                 value={totalRepetitions.toLocaleString(
                   "fr-FR"
                 )}
-                label="RÃ©pÃ©titions"
+                label="Répétitions"
                 icon="repeat-outline"
               
                 delay={90}/>
@@ -571,7 +572,7 @@ export default function HistoryScreen() {
                 marginTop: 14,
               }}
             >
-              Chargement de tes sÃ©ances...
+              Chargement de tes séances...
             </Text>
           </View>
         )}
@@ -632,7 +633,7 @@ export default function HistoryScreen() {
                     textAlign: "center",
                   }}
                 >
-                  Aucune sÃ©ance
+                  Aucune séance
                 </Text>
 
                 <Text
@@ -644,8 +645,8 @@ export default function HistoryScreen() {
                     textAlign: "center",
                   }}
                 >
-                  Tes prochaines sÃ©ances
-                  apparaÃ®tront ici.
+                  Tes prochaines séances
+                  apparaîtront ici.
                 </Text>
 
                 <TouchableOpacity
@@ -671,7 +672,7 @@ export default function HistoryScreen() {
                       fontWeight: "900",
                     }}
                   >
-                    Commencer une sÃ©ance
+                    Commencer une séance
                   </Text>
                 </TouchableOpacity>
               </LinearGradient>
@@ -679,7 +680,7 @@ export default function HistoryScreen() {
           )}
 
         {/* ==================================================
-            LISTE DES SÃ‰ANCES
+            LISTE DES SÉANCES
         ================================================== */}
 
         {!loading &&
@@ -707,7 +708,7 @@ export default function HistoryScreen() {
                       fontWeight: "900",
                     }}
                   >
-                    Tes sÃ©ances
+                    Tes séances
                   </Text>
 
                   <Text
@@ -717,7 +718,7 @@ export default function HistoryScreen() {
                       marginTop: 4,
                     }}
                   >
-                    Les plus rÃ©centes en premier
+                    Les plus récentes en premier
                   </Text>
                 </View>
 
@@ -1219,7 +1220,7 @@ function HistoryStat({
 
 /*
  * ============================================================
- * CARTE DE SÃ‰ANCE
+ * CARTE DE SÉANCE
  * ============================================================
  */
 
@@ -1338,7 +1339,7 @@ return (
             }}
           >
             {formatDate(workout.date)}
-            {" Â· "}
+            {" · "}
             {formatTime(workout.date)}
           </Text>
         </View>
@@ -1367,7 +1368,7 @@ return (
               marginTop: 2,
             }}
           >
-            rÃ©pÃ©titions
+            Répétitions
           </Text>
         </View>
       </View>
@@ -1407,7 +1408,7 @@ return (
               marginLeft: 6,
             }}
           >
-            DurÃ©e
+            Durée
           </Text>
         </View>
 
@@ -1427,6 +1428,8 @@ return (
     </TouchableOpacity>
   );
 }
+
+
 
 
 

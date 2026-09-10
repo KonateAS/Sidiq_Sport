@@ -9,6 +9,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,14 +20,33 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import StatCard from "../components/StatCard";
 import StreakBadge from "../components/StreakBadge";
 import { motivationalQuotes } from "../lib/quotes";
+import heroAthlete from "../assets/images/hero-athlete.png";
 
 const USER_NAME_KEY = "sidiq-sport-user-name";
+
+const COLORS = {
+  black: "#000000",
+  orange: "#E85002",
+  red: "#C10801",
+  orangeLight: "#F16001",
+  beige: "#D9C3AB",
+
+  white: "#F9F9F9",
+  lightGray: "#A7A7A7",
+  gray: "#646464",
+  darkGray: "#333333",
+
+  surface: "#0B0B0B",
+  surfaceLight: "#111111",
+  border: "#242424",
+};
 
 export default function HomeScreen() {
   const router = useRouter();
 
   const [quote, setQuote] = useState("");
   const [userName, setUserName] = useState("Sidiq");
+  const [disciplinesOpen, setDisciplinesOpen] = useState(false);
 
   useEffect(() => {
     loadUserName();
@@ -59,33 +79,73 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* =====================================================
-            HEADER
-        ===================================================== */}
+{/* =====================================================
+    HERO
+===================================================== */}
 
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.brand}>SIDIQ SPORT</Text>
+<View style={styles.hero}>
 
-            <Text style={styles.greeting}>
-              Bonjour {userName}
-            </Text>
+  <View style={styles.brandRow}>
+    <View style={styles.brandDot} />
 
-            <Text style={styles.title}>
-              Prêt à progresser ?
-            </Text>
-          </View>
+    <Text style={styles.brand}>
+      SIDIQ SPORT
+    </Text>
+  </View>
 
-          <TouchableOpacity
-            onPress={() => router.push("/profile")}
-            activeOpacity={0.8}
-            style={styles.avatarButton}
-          >
-            <Text style={styles.avatarText}>
-              {firstLetter}
-            </Text>
-          </TouchableOpacity>
-        </View>
+  <View style={styles.heroImageContainer}>
+    <Image
+      source={heroAthlete}
+      resizeMode="contain"
+      style={styles.heroImage}
+    />
+  </View>
+
+  <View style={styles.heroText}>
+
+    <Text style={styles.greeting}>
+      Bonjour {userName}
+    </Text>
+
+    <Text style={styles.title}>
+      Prêt à{"\n"}
+      progresser ?
+    </Text>
+
+    <View style={styles.titleAccent}>
+      <View style={styles.titleAccentLine} />
+
+      <Text style={styles.titleAccentText}>
+        DISCIPLINE · FORCE · RÉGULARITÉ
+      </Text>
+    </View>
+
+  </View>
+
+  <TouchableOpacity
+    onPress={() => router.push("/workout")}
+    activeOpacity={0.85}
+    style={styles.startButton}
+  >
+    <LinearGradient
+      colors={["#E85002", "#C10801"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.startGradient}
+    >
+      <Text style={styles.startText}>
+        COMMENCER
+      </Text>
+
+      <Ionicons
+        name="arrow-forward"
+        size={20}
+        color="#F9F9F9"
+      />
+    </LinearGradient>
+  </TouchableOpacity>
+
+</View>
 
         {/* =====================================================
             INDICATEUR DE RÉGULARITÉ
@@ -104,11 +164,12 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <LinearGradient
-            colors={["#13271B", "#0D1710"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.workoutCard}
-          >
+  colors={["#000000", "#160604", "#2A0A03", "#0B0B0B"]}
+  locations={[0, 0.45, 0.72, 1]}
+  start={{ x: 0, y: 0 }}
+  end={{ x: 1, y: 1 }}
+  style={styles.workoutCard}
+>
             {/* EN-TÊTE */}
 
             <View style={styles.workoutHeader}>
@@ -128,10 +189,10 @@ export default function HomeScreen() {
 
               <View style={styles.workoutIcon}>
                 <Ionicons
-                  name="fitness-outline"
-                  size={24}
-                  color="#00FF87"
-                />
+  name="fitness-outline"
+  size={24}
+  color="#E85002"
+/>
               </View>
             </View>
 
@@ -150,11 +211,11 @@ export default function HomeScreen() {
 
               <View style={styles.progressTrack}>
                 <LinearGradient
-                  colors={["#00FF87", "#65FFB5"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.progressFill}
-                />
+  colors={["#C10801", "#E85002", "#F16001"]}
+  start={{ x: 0, y: 0 }}
+  end={{ x: 1, y: 0 }}
+  style={styles.progressFill}
+/>
               </View>
 
               <Text style={styles.progressInfo}>
@@ -170,20 +231,20 @@ export default function HomeScreen() {
               style={styles.startButton}
             >
               <LinearGradient
-                colors={["#00FF87", "#00D966"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.startGradient}
-              >
+  colors={["#E85002", "#C10801"]}
+  start={{ x: 0, y: 0 }}
+  end={{ x: 1, y: 0 }}
+  style={styles.startGradient}
+>
                 <Text style={styles.startText}>
-                  COMMENCER
-                </Text>
+  COMMENCER
+</Text>
 
-                <Ionicons
-                  name="arrow-forward"
-                  size={20}
-                  color="#07100A"
-                />
+<Ionicons
+  name="arrow-forward"
+  size={20}
+  color="#F9F9F9"
+/>
               </LinearGradient>
             </TouchableOpacity>
           </LinearGradient>
@@ -199,11 +260,14 @@ export default function HomeScreen() {
               Aujourd'hui
             </Text>
 
-            <TouchableOpacity>
-              <Text style={styles.seeMore}>
-                Voir plus
-              </Text>
-            </TouchableOpacity>
+            <TouchableOpacity
+  activeOpacity={0.7}
+  onPress={() => router.push("/history")}
+>
+  <Text style={styles.seeMore}>
+    Voir plus
+  </Text>
+</TouchableOpacity>
           </View>
 
           <View style={styles.statsGrid}>
@@ -212,7 +276,7 @@ export default function HomeScreen() {
               value="328"
               unit="kcal"
               label="Calories"
-              color="#00FF87"
+              color="#E85002"
             />
 
             <StatCard
@@ -256,56 +320,87 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.disciplineGrid}>
-            {WORKOUT_LIST.map((discipline) => (
-              <TouchableOpacity
-                key={discipline.id}
-                onPress={() =>
-                  router.push({
-                    pathname: "/workout",
-                    params: {
-                      workoutId: discipline.id,
-                    },
-                  })
-                }
-                activeOpacity={0.82}
-                style={styles.disciplineCard}
-              >
-                <View style={styles.disciplineTop}>
-                  <View
-                    style={[
-                      styles.disciplineIcon,
-                      {
-                        borderColor: `${discipline.accent}30`,
-                        backgroundColor: `${discipline.accent}10`,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={discipline.icon}
-                      size={23}
-                      color={discipline.accent}
-                    />
-                  </View>
+          <View style={styles.disciplineDropdown}>
 
-                  <Ionicons
-                    name="arrow-forward-outline"
-                    size={17}
-                    color="#59675D"
-                  />
-                </View>
+  <TouchableOpacity
+    activeOpacity={0.82}
+    onPress={() => setDisciplinesOpen(!disciplinesOpen)}
+    style={styles.disciplineDropdownHeader}
+  >
+    <View>
+      <Text style={styles.disciplineDropdownTitle}>
+        Toutes les disciplines
+      </Text>
 
-                <Text style={styles.disciplineName}>
-                  {discipline.name}
-                </Text>
+      <Text style={styles.disciplineDropdownSubtitle}>
+        {WORKOUT_LIST.length} disciplines disponibles
+      </Text>
+    </View>
 
-                <Text style={styles.disciplineMeta}>
-                  {discipline.category}
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <Ionicons
+      name={
+        disciplinesOpen
+          ? "chevron-up-outline"
+          : "chevron-down-outline"
+      }
+      size={20}
+      color="#F9F9F9"
+    />
+  </TouchableOpacity>
+
+  {disciplinesOpen && (
+    <View style={styles.disciplineDropdownList}>
+      {WORKOUT_LIST.map((discipline) => (
+        <TouchableOpacity
+          key={discipline.id}
+          activeOpacity={0.82}
+          onPress={() =>
+            router.push({
+              pathname: "/workout",
+              params: {
+                workoutId: discipline.id,
+              },
+            })
+          }
+          style={styles.disciplineDropdownItem}
+        >
+          <View
+            style={[
+              styles.disciplineDropdownIcon,
+              {
+                borderColor: `${discipline.accent}30`,
+                backgroundColor: `${discipline.accent}10`,
+              },
+            ]}
+          >
+            <Ionicons
+              name={discipline.icon}
+              size={20}
+              color={discipline.accent}
+            />
           </View>
-        </View>
+
+          <View style={styles.disciplineDropdownInfo}>
+            <Text style={styles.disciplineDropdownName}>
+              {discipline.name}
+            </Text>
+
+            <Text style={styles.disciplineDropdownMeta}>
+              {discipline.category}
+            </Text>
+          </View>
+
+          <Ionicons
+            name="arrow-forward-outline"
+            size={17}
+            color="#59675D"
+          />
+        </TouchableOpacity>
+      ))}
+    </View>
+  )}
+</View>
+</View>
         {/* =====================================================
             CITATION
         ===================================================== */}
@@ -315,7 +410,7 @@ export default function HomeScreen() {
             <Ionicons
               name="chatbox-ellipses-outline"
               size={20}
-              color="#00FF87"
+              color="#E85002"
             />
           </View>
 
@@ -339,7 +434,7 @@ export default function HomeScreen() {
           <Ionicons
             name="home"
             size={22}
-            color="#00FF87"
+            color="#E85002"
           />
 
           <Text style={styles.navActive}>
@@ -399,9 +494,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
-    backgroundColor: "#080D09",
-  },
+  flex: 1,
+  backgroundColor: COLORS.black,
+},
 
   scrollContent: {
     paddingBottom: 120,
@@ -409,57 +504,104 @@ const styles = StyleSheet.create({
 
   /* HEADER */
 
-  header: {
+   /* HERO */
+
+  hero: {
     paddingHorizontal: 24,
     paddingTop: 58,
-    paddingBottom: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    paddingBottom: 30,
   },
 
-  headerLeft: {
-    flex: 1,
+  heroImageContainer: {
+  width: "100%",
+  height: 370,
+  marginTop: 0,
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+},
+
+heroImage: {
+  width: "100%",
+  height: "100%",
+},
+
+  heroText: {
+    marginTop: 4,
   },
 
-  brand: {
-    color: "#00FF87",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 3,
-    marginBottom: 10,
-  },
+brandRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 12,
+},
 
-  greeting: {
-    color: "#78847C",
-    fontSize: 14,
-    marginBottom: 4,
-  },
+brandDot: {
+  width: 7,
+  height: 7,
+  borderRadius: 999,
+  backgroundColor: "#E85002",
+  marginRight: 8,
+},
 
-  title: {
-    color: "#F3F7F4",
-    fontSize: 34,
-    fontWeight: "800",
-    letterSpacing: -1,
-  },
+brand: {
+  color: "#E85002",
+  fontSize: 10,
+  fontWeight: "900",
+  letterSpacing: 3,
+},
 
-  avatarButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: "#101A13",
-    borderWidth: 1,
-    borderColor: "rgba(0,255,135,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 14,
-  },
+greeting: {
+  color: "#A7A7A7",
+  fontSize: 14,
+  marginBottom: 7,
+},
 
-  avatarText: {
-    color: "#00FF87",
-    fontSize: 17,
-    fontWeight: "900",
-  },
+title: {
+  color: "#F9F9F9",
+  fontSize: 36,
+  lineHeight: 39,
+  fontWeight: "900",
+  letterSpacing: -1.2,
+},
+
+titleAccent: {
+  marginTop: 15,
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+titleAccentLine: {
+  width: 28,
+  height: 2,
+  backgroundColor: "#E85002",
+  marginRight: 9,
+},
+
+titleAccentText: {
+  color: "#646464",
+  fontSize: 8,
+  fontWeight: "800",
+  letterSpacing: 1.2,
+},
+
+avatarButton: {
+  width: 48,
+  height: 48,
+  borderRadius: 16,
+  backgroundColor: "#0B0B0B",
+  borderWidth: 1,
+  borderColor: "rgba(232,80,2,0.4)",
+  alignItems: "center",
+  justifyContent: "center",
+  marginLeft: 14,
+},
+
+avatarText: {
+  color: "#E85002",
+  fontSize: 17,
+  fontWeight: "900",
+},
 
   /* SECTIONS */
 
@@ -469,33 +611,35 @@ const styles = StyleSheet.create({
   },
 
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 16,
+},
 
-  sectionTitle: {
-    color: "#F3F7F4",
-    fontSize: 21,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
+sectionTitle: {
+  color: COLORS.white,
+  fontSize: 20,
+  fontWeight: "800",
+  letterSpacing: -0.4,
+},
 
-  seeMore: {
-    color: "#00FF87",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+seeMore: {
+  color: COLORS.orange,
+  fontSize: 12,
+  fontWeight: "800",
+  letterSpacing: 0.5,
+  textTransform: "uppercase",
+},
 
   /* WORKOUT */
 
   workoutCard: {
-    borderRadius: 28,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: "rgba(0,255,135,0.18)",
-  },
+  borderRadius: 28,
+  padding: 22,
+  borderWidth: 1,
+  borderColor: "rgba(232,80,2,0.28)",
+},
 
   workoutHeader: {
     flexDirection: "row",
@@ -504,36 +648,36 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    color: "#00FF87",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
+  color: COLORS.orange,
+  fontSize: 10,
+  fontWeight: "900",
+  letterSpacing: 2,
+  marginBottom: 8,
+},
 
   workoutTitle: {
-    color: "#F3F7F4",
-    fontSize: 30,
-    fontWeight: "800",
-    letterSpacing: -0.8,
-  },
+  color: COLORS.white,
+  fontSize: 30,
+  fontWeight: "800",
+  letterSpacing: -0.8,
+},
 
   workoutSubtitle: {
-    color: "#78847C",
-    fontSize: 13,
-    marginTop: 5,
-  },
+  color: COLORS.lightGray,
+  fontSize: 13,
+  marginTop: 5,
+},
 
   workoutIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: "rgba(0,255,135,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(0,255,135,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  width: 46,
+  height: 46,
+  borderRadius: 15,
+  backgroundColor: "rgba(232,80,2,0.10)",
+  borderWidth: 1,
+  borderColor: "rgba(232,80,2,0.25)",
+  alignItems: "center",
+  justifyContent: "center",
+},
 
   progressArea: {
     marginTop: 28,
@@ -547,57 +691,57 @@ const styles = StyleSheet.create({
   },
 
   progressSmall: {
-    color: "#69766E",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
+  color: "#646464",
+  fontSize: 10,
+  fontWeight: "800",
+  letterSpacing: 1.5,
+},
 
   progressPercent: {
-    color: "#00FF87",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  color: "#E85002",
+  fontSize: 13,
+  fontWeight: "800",
+},
 
   progressTrack: {
-    height: 7,
-    backgroundColor: "#172119",
-    borderRadius: 999,
-    overflow: "hidden",
-  },
+  height: 7,
+  backgroundColor: "#222222",
+  borderRadius: 999,
+  overflow: "hidden",
+},
 
   progressFill: {
-    width: "50%",
-    height: "100%",
-    borderRadius: 999,
-  },
+  width: "50%",
+  height: "100%",
+  borderRadius: 999,
+},
 
   progressInfo: {
-    color: "#69766E",
-    fontSize: 11,
-    marginTop: 8,
-  },
+  color: "#646464",
+  fontSize: 11,
+  marginTop: 8,
+},
 
   startButton: {
-    marginTop: 22,
-    borderRadius: 15,
-    overflow: "hidden",
-  },
+  marginTop: 22,
+  borderRadius: 15,
+  overflow: "hidden",
+},
 
-  startGradient: {
-    height: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
+startGradient: {
+  height: 54,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+},
 
-  startText: {
-    color: "#07100A",
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-  },
+startText: {
+  color: "#F9F9F9",
+  fontSize: 14,
+  fontWeight: "900",
+  letterSpacing: 1.5,
+},
 
   /* STATS */
 
@@ -616,6 +760,84 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
+    disciplineDropdown: {
+  marginTop: 4,
+  backgroundColor: "#0A0A0A",
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: "#222222",
+  overflow: "hidden",
+},
+
+disciplineDropdownHeader: {
+  minHeight: 74,
+  paddingHorizontal: 18,
+  paddingVertical: 14,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
+
+disciplineDropdownTitle: {
+  color: "#F9F9F9",
+  fontSize: 15,
+  fontWeight: "900",
+  letterSpacing: -0.2,
+},
+
+disciplineDropdownSubtitle: {
+  color: "#666666",
+  fontSize: 10,
+  fontWeight: "600",
+  marginTop: 5,
+  letterSpacing: 0.2,
+},
+
+disciplineDropdownList: {
+  borderTopWidth: 1,
+  borderTopColor: "#222222",
+},
+
+disciplineDropdownItem: {
+  minHeight: 70,
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#0F0F0F",
+  borderBottomWidth: 1,
+  borderBottomColor: "#1B1B1B",
+},
+
+disciplineDropdownIcon: {
+  width: 44,
+  height: 44,
+  borderRadius: 14,
+  borderWidth: 1,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+disciplineDropdownInfo: {
+  flex: 1,
+  marginLeft: 13,
+},
+
+disciplineDropdownName: {
+  color: "#F9F9F9",
+  fontSize: 14,
+  fontWeight: "800",
+  letterSpacing: -0.1,
+},
+
+disciplineDropdownMeta: {
+  color: "#606060",
+  fontSize: 10,
+  fontWeight: "600",
+  marginTop: 4,
+  letterSpacing: 0.2,
+},
+
   disciplineGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -623,15 +845,15 @@ const styles = StyleSheet.create({
   },
 
   disciplineCard: {
-    width: "48%",
-    minHeight: 130,
-    backgroundColor: "#0E1510",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#17231A",
-  },
+  width: "48%",
+  minHeight: 130,
+  backgroundColor: "#0B0B0B",
+  borderRadius: 20,
+  padding: 16,
+  marginBottom: 12,
+  borderWidth: 1,
+  borderColor: "#242424",
+},
 
   disciplineTop: {
     flexDirection: "row",
@@ -650,90 +872,115 @@ const styles = StyleSheet.create({
   },
 
   disciplineName: {
-    color: "#F0F5F2",
-    fontSize: 16,
-    fontWeight: "800",
-  },
+  color: COLORS.white,
+  fontSize: 16,
+  fontWeight: "800",
+},
 
   disciplineMeta: {
-    color: "#637068",
-    fontSize: 11,
-    marginTop: 4,
-  },
+  color: COLORS.gray,
+  fontSize: 11,
+  marginTop: 4,
+},
 
   /* QUOTE */
 
   quoteCard: {
-    marginHorizontal: 24,
-    marginBottom: 25,
-    padding: 22,
-    backgroundColor: "#0D1510",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#17231A",
-  },
+  marginHorizontal: 24,
+  marginBottom: 25,
+  padding: 24,
 
-  quoteMark: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,255,135,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
+  backgroundColor: "#0A0A0A",
+  borderRadius: 24,
 
-  quoteLabel: {
-    color: "#00FF87",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 2,
-    marginBottom: 9,
-  },
+  borderWidth: 1,
+  borderColor: "#222222",
+},
 
-  quote: {
-    color: "#DDE6DF",
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: "600",
-  },
+quoteMark: {
+  width: 42,
+  height: 42,
+  borderRadius: 14,
+
+  backgroundColor: "rgba(232,80,2,0.10)",
+
+  alignItems: "center",
+  justifyContent: "center",
+
+  marginBottom: 17,
+},
+
+quoteLabel: {
+  color: COLORS.orange,
+  fontSize: 9,
+  fontWeight: "900",
+  letterSpacing: 2.2,
+
+  marginBottom: 10,
+},
+
+quote: {
+  color: "#F2F2F2",
+  fontSize: 18,
+  lineHeight: 27,
+  fontWeight: "700",
+  letterSpacing: -0.2,
+},
 
   /* NAVIGATION */
 
   bottomNav: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 78,
-    backgroundColor: "rgba(10,16,11,0.98)",
-    borderTopWidth: 1,
-    borderTopColor: "#18231B",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 8,
-  },
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
 
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 70,
-  },
+  height: 82,
 
-  navActive: {
-    color: "#00FF87",
-    fontSize: 10,
-    fontWeight: "800",
-    marginTop: 5,
-  },
+  backgroundColor: "rgba(5,5,5,0.98)",
 
-  navText: {
-    color: "#66736B",
-    fontSize: 10,
-    fontWeight: "600",
-    marginTop: 5,
-  },
+  borderTopWidth: 1,
+  borderTopColor: "#1E1E1E",
+
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-around",
+
+  paddingHorizontal: 12,
+},
+
+navItem: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+
+  minWidth: 70,
+  height: 62,
+},
+
+navActive: {
+  color: COLORS.orange,
+
+  fontSize: 9,
+  fontWeight: "900",
+
+  marginTop: 6,
+  letterSpacing: 0.8,
+
+  textTransform: "uppercase",
+},
+
+navText: {
+  color: "#66736B",
+
+  fontSize: 9,
+  fontWeight: "800",
+
+  marginTop: 6,
+  letterSpacing: 0.7,
+
+  textTransform: "uppercase",
+},
 });
 
 

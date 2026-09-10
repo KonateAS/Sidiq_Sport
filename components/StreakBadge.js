@@ -4,46 +4,139 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function StreakBadge({ days, level }) {
   const tiers = {
-    ROOKIE: { emoji: "🐣", color: "#7A8A7E" },
-    WARRIOR: { emoji: "💪", color: "#00FF87" },
-    BEAST: { emoji: "⚡", color: "#FF3B30" },
-    TITAN: { emoji: "👑", color: "#FFD700" },
-    APEX: { emoji: "🦁", color: "#00FF87" },
+    ROOKIE: {
+      icon: "fitness-outline",
+      color: "#646464",
+    },
+    WARRIOR: {
+      icon: "trophy-outline",
+      color: "#E85002",
+    },
+    BEAST: {
+      icon: "flash-outline",
+      color: "#C10801",
+    },
+    TITAN: {
+      icon: "diamond-outline",
+      color: "#D9C3AB",
+    },
+    APEX: {
+      icon: "star-outline",
+      color: "#F16001",
+    },
   };
+
   const tier = tiers[level] || tiers.WARRIOR;
 
   return (
     <LinearGradient
-      colors={["#0F1F12", "#003D1A"]}
+      colors={["#000000", "#140604", "#0B0B0B"]}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={{
         borderRadius: 20,
         padding: 16,
         flexDirection: "row",
         alignItems: "center",
         borderWidth: 1,
-        borderColor: tier.color + "50",
+        borderColor: tier.color + "55",
       }}
     >
-      <Text style={{ fontSize: 40 }}>{tier.emoji}</Text>
-      <View style={{ marginLeft: 16, flex: 1 }}>
-        <Text style={{ color: "#7A8A7E", fontSize: 10, letterSpacing: 1 }}>
+      <View
+        style={{
+          width: 58,
+          height: 58,
+          borderRadius: 18,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: tier.color + "12",
+          borderWidth: 1,
+          borderColor: tier.color + "30",
+        }}
+      >
+        <Ionicons
+          name={tier.icon}
+          size={30}
+          color={tier.color}
+        />
+      </View>
+
+      <View
+        style={{
+          marginLeft: 16,
+          flex: 1,
+        }}
+      >
+        <Text
+          style={{
+            color: "#A7A7A7",
+            fontSize: 10,
+            fontWeight: "800",
+            letterSpacing: 1.5,
+          }}
+        >
           STREAK EN COURS
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-          <Text style={{ color: tier.color, fontWeight: "bold", fontSize: 36 }}>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+          }}
+        >
+          <Text
+            style={{
+              color: tier.color,
+              fontWeight: "900",
+              fontSize: 36,
+            }}
+          >
             {days}
           </Text>
-          <Text style={{ color: "#F0FFF0", fontWeight: "bold", fontSize: 18, marginLeft: 8 }}>
+
+          <Text
+            style={{
+              color: "#F9F9F9",
+              fontWeight: "800",
+              fontSize: 18,
+              marginLeft: 8,
+            }}
+          >
             jours
           </Text>
         </View>
-        <Text style={{ color: "#00FF87", fontSize: 10, letterSpacing: 1, marginTop: 4 }}>
-          ⚡ NIVEAU {level}
+
+        <Text
+          style={{
+            color: "#E85002",
+            fontSize: 10,
+            fontWeight: "900",
+            letterSpacing: 1.2,
+            marginTop: 4,
+          }}
+        >
+          NIVEAU {level}
         </Text>
       </View>
-      <Ionicons name="flame" size={32} color={tier.color} />
+
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: tier.color + "12",
+          borderWidth: 1,
+          borderColor: tier.color + "25",
+        }}
+      >
+        <Ionicons
+          name="trending-up-outline"
+          size={25}
+          color={tier.color}
+        />
+      </View>
     </LinearGradient>
   );
 }
