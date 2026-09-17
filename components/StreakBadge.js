@@ -1,8 +1,34 @@
 import { View, Text } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
+import { useEffect } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function StreakBadge({ days, level }) {
+
+    const iconScale = useSharedValue(1);
+
+  useEffect(() => {
+    iconScale.value = withRepeat(
+      withSequence(
+        withTiming(1.08, { duration: 900 }),
+        withTiming(1, { duration: 900 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
+
   const tiers = {
     ROOKIE: {
       icon: "fitness-outline",
@@ -42,24 +68,27 @@ export default function StreakBadge({ days, level }) {
         borderColor: tier.color + "55",
       }}
     >
-      <View
-        style={{
-          width: 58,
-          height: 58,
-          borderRadius: 18,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: tier.color + "12",
-          borderWidth: 1,
-          borderColor: tier.color + "30",
-        }}
-      >
-        <Ionicons
-          name={tier.icon}
-          size={30}
-          color={tier.color}
-        />
-      </View>
+      <Animated.View
+  style={[
+    {
+      width: 58,
+      height: 58,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: tier.color + "12",
+      borderWidth: 1,
+      borderColor: tier.color + "30",
+    },
+    iconAnimatedStyle,
+  ]}
+>
+  <Ionicons
+    name={tier.icon}
+    size={30}
+    color={tier.color}
+  />
+</Animated.View>
 
       <View
         style={{

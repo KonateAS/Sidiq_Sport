@@ -24,7 +24,7 @@ export default function PremiumScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: "#080C09",
+        backgroundColor: "#0B0B0B",
       }}
     >
       <ScrollView
@@ -52,9 +52,9 @@ export default function PremiumScreen() {
               width: 46,
               height: 46,
               borderRadius: 15,
-              backgroundColor: "#111511",
+              backgroundColor: "#111111",
               borderWidth: 1,
-              borderColor: "#202820",
+              borderColor: "#242424",
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -75,7 +75,7 @@ export default function PremiumScreen() {
           >
             <Text
               style={{
-                color: "#00FF87",
+                color: "#E85002",
                 fontSize: 10,
                 fontWeight: "900",
                 letterSpacing: 2,
@@ -109,9 +109,9 @@ export default function PremiumScreen() {
         >
           <LinearGradient
             colors={[
-              "#163B25",
-              "#0D1911",
-              "#080C09",
+              "#C10801",
+              "#3A0B08",
+              "#0B0B0B",
             ]}
             start={{
               x: 0,
@@ -126,7 +126,7 @@ export default function PremiumScreen() {
               padding: 28,
               borderWidth: 1,
               borderColor:
-                "rgba(0,255,135,0.25)",
+                "rgba(232,80,2,0.25)",
             }}
           >
             <View
@@ -135,10 +135,10 @@ export default function PremiumScreen() {
                 height: 62,
                 borderRadius: 20,
                 backgroundColor:
-                  "rgba(0,255,135,0.12)",
+                  "rgba(232,80,2,0.12)",
                 borderWidth: 1,
                 borderColor:
-                  "rgba(0,255,135,0.25)",
+                  "rgba(232,80,2,0.25)",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 22,
@@ -147,13 +147,13 @@ export default function PremiumScreen() {
               <Ionicons
                 name="diamond"
                 size={30}
-                color="#00FF87"
+                color="#E85002"
               />
             </View>
 
             <Text
               style={{
-                color: "#00FF87",
+                color: "#E85002",
                 fontSize: 12,
                 fontWeight: "900",
                 letterSpacing: 2,
@@ -176,7 +176,7 @@ export default function PremiumScreen() {
 
             <Text
               style={{
-                color: "#A5ADA7",
+                color: "#A7A7A7",
                 fontSize: 15,
                 lineHeight: 23,
                 marginTop: 10,
@@ -211,7 +211,7 @@ export default function PremiumScreen() {
 
           <Text
             style={{
-              color: "#7F8781",
+              color: "#A7A7A7",
               fontSize: 13,
               marginTop: 5,
             }}
@@ -252,11 +252,11 @@ export default function PremiumScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  backgroundColor: "#101410",
+                  backgroundColor: "#111111",
                   borderRadius: 20,
                   padding: 18,
                   borderWidth: 1,
-                  borderColor: "#1D241F",
+                  borderColor: "#242424",
                 }}
               >
                 <View
@@ -265,7 +265,7 @@ export default function PremiumScreen() {
                     height: 44,
                     borderRadius: 14,
                     backgroundColor:
-                      "rgba(0,255,135,0.08)",
+                      "rgba(232,80,2,0.08)",
                     alignItems: "center",
                     justifyContent: "center",
                     marginRight: 14,
@@ -274,7 +274,7 @@ export default function PremiumScreen() {
                   <Ionicons
                     name={item.icon}
                     size={21}
-                    color="#00FF87"
+                    color="#E85002"
                   />
                 </View>
 
@@ -295,7 +295,7 @@ export default function PremiumScreen() {
 
                   <Text
                     style={{
-                      color: "#7F8781",
+                      color: "#A7A7A7",
                       fontSize: 12,
                       lineHeight: 18,
                       marginTop: 4,
@@ -325,14 +325,14 @@ export default function PremiumScreen() {
             style={{
               height: 58,
               borderRadius: 19,
-              backgroundColor: "#00FF87",
+              backgroundColor: "#E85002",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <Text
               style={{
-                color: "#041009",
+                color: "#0B0B0B",
                 fontSize: 16,
                 fontWeight: "900",
               }}
@@ -343,7 +343,7 @@ export default function PremiumScreen() {
 
           <Text
             style={{
-              color: "#59615B",
+              color: "#646464",
               fontSize: 11,
               textAlign: "center",
               marginTop: 12,
@@ -357,5 +357,8 @@ export default function PremiumScreen() {
     </View>
   );
 }
+
+
+
 
 

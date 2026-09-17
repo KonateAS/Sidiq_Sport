@@ -1,4 +1,4 @@
-import {
+ï»¿import {
   View,
   Text,
   TouchableOpacity,
@@ -21,7 +21,7 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// Le target dépend maintenant de l'activité sélectionnée.
+// Le target dÃ©pend maintenant de l'activitÃ© sÃ©lectionnÃ©e.
 
 const RING_SIZE = Math.min(width - 72, 310);
 
@@ -71,7 +71,7 @@ export default function WorkoutScreen() {
 
   /*
    * ============================================================
-   * VÉRIFICATION PREMIUM
+   * VÃ‰RIFICATION PREMIUM
    * ============================================================
    */
 
@@ -90,7 +90,7 @@ export default function WorkoutScreen() {
         setPremiumChecked(true);
       } catch (error) {
         console.log(
-          "Erreur lors de la vérification Premium :",
+          "Erreur lors de la vÃ©rification Premium :",
           error
         );
 
@@ -296,8 +296,8 @@ export default function WorkoutScreen() {
 
     /*
      * ----------------------------------------------------------
-     * ACTIVITÉS À DURÉE
-     * Le chronomètre est géré automatiquement.
+     * ACTIVITÃ‰S Ã€ DURÃ‰E
+     * Le chronomÃ¨tre est gÃ©rÃ© automatiquement.
      * ----------------------------------------------------------
      */
 
@@ -309,7 +309,7 @@ export default function WorkoutScreen() {
 
     /*
      * ----------------------------------------------------------
-     * VALEUR AJOUTÉE SELON LE TYPE D'ACTIVITÉ
+     * VALEUR AJOUTÃ‰E SELON LE TYPE D'ACTIVITÃ‰
      * ----------------------------------------------------------
      */
 
@@ -332,7 +332,7 @@ export default function WorkoutScreen() {
 
     /*
      * ----------------------------------------------------------
-     * FEEDBACK INTERMÉDIAIRE
+     * FEEDBACK INTERMÃ‰DIAIRE
      * ----------------------------------------------------------
      */
 
@@ -525,7 +525,7 @@ export default function WorkoutScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#080C09",
+          backgroundColor: "#0B0B0B",
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -533,12 +533,12 @@ export default function WorkoutScreen() {
         <Ionicons
           name="diamond-outline"
           size={28}
-          color="#00FF87"
+          color="#E85002"
         />
 
         <Text
           style={{
-            color: "#7F8781",
+            color: "#A7A7A7",
             fontSize: 12,
             fontWeight: "700",
             marginTop: 12,
@@ -620,12 +620,12 @@ export default function WorkoutScreen() {
               }}
             >
               {workout.mode === "repetitions"
-                ? "Répétitions"
+                ? "RÃ©pÃ©titions"
                 : workout.mode === "distance"
                   ? "Distance"
                   : workout.mode === "duration"
-                    ? "Durée"
-                    : "Séries"}
+                    ? "DurÃ©e"
+                    : "SÃ©ries"}
             </Text>
 
             <Text
@@ -651,7 +651,7 @@ export default function WorkoutScreen() {
                 fontSize: 15,
               }}
             >
-              Durée
+              DurÃ©e
             </Text>
 
             <Text
@@ -830,7 +830,7 @@ export default function WorkoutScreen() {
               textTransform: "uppercase",
             }}
           >
-            Durée
+            DurÃ©e
           </Text>
 
           <Text
@@ -1105,6 +1105,8 @@ export default function WorkoutScreen() {
     </LinearGradient>
   );
 }
+
+
 
 
 

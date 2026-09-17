@@ -25,15 +25,20 @@ import { getPremiumStatus } from "../lib/premiumStorage";
 const USER_NAME_KEY = "sidiq-sport-user-name";
 
 const COLORS = {
-  background: "#080C09",
-  card: "#101712",
-  cardSoft: "#0D140F",
-  primary: "#00FF87",
-  primaryDark: "#00D966",
-  text: "#F0FFF0",
-  muted: "#7A8A7E",
-  mutedDark: "#526058",
-  border: "rgba(255,255,255,0.07)",
+  background: "#000000",
+  card: "#111111",
+  cardSoft: "#0B0B0B",
+
+  primary: "#E85002",
+  primaryDark: "#C10801",
+
+  text: "#F9F9F9",
+  muted: "#A7A7A7",
+  mutedDark: "#646464",
+
+  beige: "#D9C3AB",
+
+  border: "#242424",
 };
 
 export default function ProfileScreen() {
@@ -55,7 +60,7 @@ export default function ProfileScreen() {
 
     /*
    * ============================================================
-   * ACTIVITÃ‰ DES 7 DERNIERS JOURS
+   * ACTIVITÉ DES 7 DERNIERS JOURS
    * ============================================================
    */
 
@@ -275,7 +280,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.log(
-        "Impossible de rÃ©cupÃ©rer le prÃ©nom :",
+        "Impossible de récupérer le prénom :",
         error
       );
     }
@@ -283,7 +288,7 @@ export default function ProfileScreen() {
 
   /*
  * ============================================================
- * CHARGEMENT DE L'HISTORIQUE DES SÃ‰ANCES
+ * CHARGEMENT DE L'HISTORIQUE DES SÉANCES
  * ============================================================
  */
 
@@ -372,7 +377,7 @@ useEffect(() => {
       setEditing(false);
     } catch (error) {
       console.log(
-        "Impossible de sauvegarder le prÃ©nom :",
+        "Impossible de sauvegarder le prénom :",
         error
       );
     }
@@ -426,15 +431,15 @@ useEffect(() => {
     totalXP / 1000
   ) + 1;
 
-  const levelNames = [
-    "DEBUTANT",
-    "REGULIER",
-    "DISCIPLINE",
-    "ATHLETE",
-    "GUERRIER",
-    "VETERAN",
-    "ELITE",
-  ];
+ const levelNames = [
+  "DÉBUTANT",
+  "RÉGULIER",
+  "DISCIPLINÉ",
+  "ATHLÈTE",
+  "GUERRIER",
+  "VÉTÉRAN",
+  "ÉLITE",
+];
 
   const levelName =
     levelNames[
@@ -555,7 +560,7 @@ useEffect(() => {
           </View>
 
           {/* ==================================================
-              IDENTITÃ‰
+              IDENTITÉ
           ================================================== */}
 
           <View
@@ -570,18 +575,18 @@ useEffect(() => {
                 width: 100,
                 height: 100,
                 borderRadius: 34,
-                backgroundColor: "#122018",
+                backgroundColor: "#111111",
                 borderWidth: 1,
                 borderColor:
-                  "rgba(0,255,135,0.30)",
+                  "rgba(232,80,2,0.30)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <LinearGradient
                 colors={[
-                  "rgba(0,255,135,0.18)",
-                  "rgba(0,217,102,0.05)",
+                  "rgba(232,80,2,0.18)",
+                  "rgba(193,8,1,0.05)",
                 ]}
                 style={{
                   position: "absolute",
@@ -616,7 +621,7 @@ useEffect(() => {
                   onChangeText={setDraftName}
                   autoFocus
                   maxLength={24}
-                  placeholder="Ton prÃ©nom"
+                  placeholder="Ton prénom"
                   placeholderTextColor={
                     COLORS.mutedDark
                   }
@@ -624,7 +629,7 @@ useEffect(() => {
                     backgroundColor: COLORS.card,
                     borderWidth: 1,
                     borderColor:
-                      "rgba(0,255,135,0.35)",
+                      "rgba(232,80,2,0.35)",
                     borderRadius: 16,
                     paddingHorizontal: 18,
                     paddingVertical: 15,
@@ -758,7 +763,7 @@ useEffect(() => {
                       marginLeft: 7,
                     }}
                   >
-                    Modifier le prÃ©nom
+                    Modifier le prénom
                   </Text>
                 </TouchableOpacity>
               </>
@@ -777,8 +782,8 @@ useEffect(() => {
           >
             <LinearGradient
               colors={[
-                "#12261A",
-                "#0D1510",
+                "#1A0D08",
+                "#0D0B0A",
               ]}
               start={{
                 x: 0,
@@ -793,7 +798,7 @@ useEffect(() => {
                 padding: 22,
                 borderWidth: 1,
                 borderColor:
-                  "rgba(0,255,135,0.20)",
+                  "rgba(232,80,2,0.20)",
               }}
             >
               <View
@@ -834,10 +839,10 @@ useEffect(() => {
                     height: 54,
                     borderRadius: 18,
                     backgroundColor:
-                      "rgba(0,255,135,0.10)",
+                      "rgba(232,80,2,0.10)",
                     borderWidth: 1,
                     borderColor:
-                      "rgba(0,255,135,0.25)",
+                      "rgba(232,80,2,0.25)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -858,7 +863,7 @@ useEffect(() => {
                 style={{
                   height: 7,
                   borderRadius: 999,
-                  backgroundColor: "#17221B",
+                  backgroundColor: "#1A1512",
                   overflow: "hidden",
                   marginTop: 20,
                 }}
@@ -932,7 +937,7 @@ useEffect(() => {
                 marginTop: 4,
               }}
             >
-              Ta progression sur les derniÃ¨res sÃ©ances
+              Ta progression sur les dernières séances
             </Text>
 
             <View
@@ -944,13 +949,13 @@ useEffect(() => {
             >
               <StatBox
   value={String(workoutStats.sessions)}
-  label="SÃ©ances"
+  label="Séances"
   icon="barbell-outline"
 />
 
 <StatBox
   value={workoutStats.repetitions.toLocaleString("fr-FR")}
-  label="RÃ©pÃ©titions"
+  label="Répétitions"
   icon="repeat-outline"
 />
             </View>
@@ -1005,10 +1010,10 @@ useEffect(() => {
                   height: 48,
                   borderRadius: 16,
                   backgroundColor:
-                    "rgba(0,255,135,0.08)",
+                    "rgba(232,80,2,0.08)",
                   borderWidth: 1,
                   borderColor:
-                    "rgba(0,255,135,0.15)",
+                    "rgba(232,80,2,0.15)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -1052,7 +1057,7 @@ useEffect(() => {
                   width: 40,
                   height: 40,
                   borderRadius: 13,
-                  backgroundColor: "#171D19",
+                  backgroundColor: "#171717",
                   alignItems: "center",
                   justifyContent: "center",
                   marginLeft: 10,
@@ -1067,7 +1072,7 @@ useEffect(() => {
             </View>
           </TouchableOpacity>
           {/* ==================================================
-              ACTIVITÃ‰ HEBDOMADAIRE
+              ACTIVITÉ HEBDOMADAIRE
           ================================================== */}
 
           <View
@@ -1097,7 +1102,7 @@ useEffect(() => {
                     fontWeight: "900",
                   }}
                 >
-                  ActivitÃ©
+                  Activité
                 </Text>
 
                 <Text
@@ -1149,7 +1154,7 @@ useEffect(() => {
                       justifyContent:
                         "flex-end",
                       backgroundColor:
-                        "#141E17",
+                        "#161311",
                       borderRadius: 8,
                       overflow: "hidden",
                     }}
@@ -1161,7 +1166,7 @@ useEffect(() => {
                         backgroundColor:
                           index === 5
                             ? COLORS.primary
-                            : "#31513E",
+                            : "#4A2112",
                         borderRadius: 8,
                       }}
                     />
@@ -1199,7 +1204,7 @@ useEffect(() => {
             <LinearGradient
               colors={
                 isPremium
-                  ? ["#12351F", "#0B1510"]
+                  ? ["#2A1208", "#0B0A09"]
                   : ["#151515", "#0B0B0B"]
               }
               start={{
@@ -1215,7 +1220,7 @@ useEffect(() => {
                 padding: 22,
                 borderWidth: 1,
                 borderColor: isPremium
-                  ? "rgba(0,255,135,0.30)"
+                  ? "rgba(232,80,2,0.30)"
                   : COLORS.border,
               }}
             >
@@ -1231,7 +1236,7 @@ useEffect(() => {
                     height: 48,
                     borderRadius: 16,
                     backgroundColor: isPremium
-                      ? "rgba(0,255,135,0.12)"
+                      ? "rgba(232,80,2,0.12)"
                       : "#1A1A1A",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1306,7 +1311,7 @@ useEffect(() => {
                     height: 42,
                     borderRadius: 14,
                     backgroundColor: isPremium
-                      ? "rgba(0,255,135,0.10)"
+                      ? "rgba(232,80,2,0.10)"
                       : "#171717",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1333,7 +1338,7 @@ useEffect(() => {
 
 
           {/* ==================================================
-              RÃ‰GULARITÃ‰
+              RÉGULARITÉ
           ================================================== */}
 
           <View
@@ -1359,7 +1364,7 @@ useEffect(() => {
                   height: 48,
                   borderRadius: 16,
                   backgroundColor:
-                    "rgba(0,255,135,0.08)",
+                    "rgba(232,80,2,0.08)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -1384,7 +1389,7 @@ useEffect(() => {
                     fontWeight: "900",
                   }}
                 >
-                  Bonne rÃ©gularitÃ©
+                  Bonne régularité
                 </Text>
 
                 <Text
@@ -1463,7 +1468,7 @@ useEffect(() => {
                   height: 8,
                   borderRadius: 999,
                   backgroundColor:
-                    "#18221B",
+                    "#181311",
                   overflow: "hidden",
                 }}
               >
@@ -1531,7 +1536,7 @@ useEffect(() => {
           left: 0,
           right: 0,
           height: 82,
-          backgroundColor: "#0D140F",
+          backgroundColor: "#0B0B0B",
           borderTopWidth: 1,
           borderTopColor:
             "rgba(255,255,255,0.06)",
@@ -1549,13 +1554,13 @@ useEffect(() => {
 
         <BottomTab
           icon="stats-chart-outline"
-          label="ActivitÃ©"
+          label="Activité"
           active
         />
 
         <BottomTab
           icon="barbell-outline"
-          label="SÃ©ances"
+          label="Séances"
           onPress={() =>
             router.push("/workout")
           }
@@ -1672,6 +1677,10 @@ function BottomTab({
     </TouchableOpacity>
   );
 }
+
+
+
+
 
 
 

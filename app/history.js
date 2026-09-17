@@ -4,7 +4,6 @@
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Modal,
   Animated,
 } from "react-native";
@@ -18,6 +17,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import {
   getWorkoutHistory,
   clearWorkoutHistory,
+  deleteWorkout,
 } from "../lib/workoutStorage";
 
 /*
@@ -27,15 +27,20 @@ import {
  */
 
 const COLORS = {
-  background: "#080C09",
-  card: "#101410",
-  cardSoft: "#111511",
-  border: "#1D241F",
-  text: "#FFFFFF",
-  muted: "#7F8781",
-  mutedDark: "#454C47",
-  primary: "#00FF87",
-  primaryDark: "#00D966",
+  black: "#000000",
+  orange: "#E85002",
+  red: "#C10801",
+  orangeLight: "#F16001",
+  beige: "#D9C3AB",
+
+  white: "#F9F9F9",
+  lightGray: "#A7A7A7",
+  gray: "#646464",
+  darkGray: "#333333",
+
+  surface: "#0B0B0B",
+  surfaceLight: "#111111",
+  border: "#242424",
 };
 
 /*
@@ -51,6 +56,9 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedWorkout, setSelectedWorkout] =
     useState(null);
+
+  const [showClearConfirm, setShowClearConfirm] =
+  useState(false); 
 
   const modalOpacity =
     useRef(new Animated.Value(0)).current;
@@ -222,48 +230,58 @@ export default function HistoryScreen() {
   }, [history]);
 
   /*
-   * ============================================================
-   * EFFACER L'HISTORIQUE
-   * ============================================================
-   */
+ * ============================================================
+ * EFFACER L'HISTORIQUE
+ * ============================================================
+ */
 
-  const handleClearHistory = () => {
-    if (history.length === 0) {
+const handleClearHistory = () => {
+  console.log("EFFACER CLIQUÉ");
+
+  if (history.length === 0) {
+    return;
+  }
+
+  setShowClearConfirm(true);
+};
+
+const confirmClearHistory = async () => {
+  try {
+    await clearWorkoutHistory();
+    setHistory([]);
+    setShowClearConfirm(false);
+  } catch (error) {
+    console.log(
+      "Impossible d'effacer l'historique :",
+      error
+    );
+  }
+};
+
+const handleDeleteWorkout = async (workoutId) => {
+  try {
+    if (!workoutId) {
       return;
     }
 
-    Alert.alert(
-      "Effacer l'historique ?",
-      "Toutes tes séances enregistrées seront supprimées définitivement.",
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Effacer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearWorkoutHistory();
-              setHistory([]);
-            } catch (error) {
-              console.log(
-                "Impossible d'effacer l'historique :",
-                error
-              );
+    await deleteWorkout(workoutId);
 
-              Alert.alert(
-                "Erreur",
-                "Impossible d'effacer l'historique."
-              );
-            }
-          },
-        },
-      ]
+    setHistory((currentHistory) =>
+      currentHistory.filter(
+        (workout) =>
+          String(workout.id) !==
+          String(workoutId)
+      )
     );
-  };
 
+    setSelectedWorkout(null);
+  } catch (error) {
+    console.log(
+      "Impossible de supprimer la séance :",
+      error
+    );
+  }
+};
   /*
    * ============================================================
    * FORMAT DURÉE
@@ -395,7 +413,7 @@ export default function HistoryScreen() {
       style={{
         flex: 1,
         backgroundColor:
-          COLORS.background,
+          COLORS.black,
       }}
     >
       <ScrollView
@@ -404,106 +422,109 @@ export default function HistoryScreen() {
           paddingBottom: 50,
         }}
       >
-        {/* ==================================================
-            HEADER
-        ================================================== */}
-
         <View
   style={{
-    paddingTop: 22,
-    paddingHorizontal: 24,
     flexDirection: "row",
     alignItems: "center",
+    marginHorizontal: 24,
+    marginTop: 18,
+    marginBottom: 10,
   }}
 >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-            style={{
-              width: 46,
-              height: 46,
-              borderRadius: 15,
-              backgroundColor:
-                COLORS.cardSoft,
-              borderWidth: 1,
-              borderColor:
-                COLORS.border,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={23}
-              color={COLORS.text}
-            />
-          </TouchableOpacity>
+  <TouchableOpacity
+    onPress={() => router.back()}
+    activeOpacity={0.8}
+    style={{
+      width: 40,
+      height: 40,
+      borderRadius: 14,
+      backgroundColor: COLORS.surfaceLight,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Ionicons
+      name="arrow-back"
+      size={18}
+      color={COLORS.white}
+    />
+  </TouchableOpacity>
 
-          <View
-  style={{
-    flex: 1,
-    alignItems: "center",
-    marginLeft: -46,
-  }}
->
-            <Text
-              style={{
-                color: COLORS.primary,
-                fontSize: 10,
-                fontWeight: "900",
-                letterSpacing: 2,
-              }}
-            >
-              SIDIQ SPORT
-            </Text>
+  <View
+    style={{
+      marginLeft: 13,
+    }}
+  >
+    <Text
+      style={{
+        color: COLORS.lightGray,
+        fontSize: 10,
+        fontWeight: "900",
+        letterSpacing: 1.5,
+      }}
+    >
+      SIDIQ SPORT
+    </Text>
 
-            <Text
-              style={{
-                color: COLORS.text,
-                fontSize: 20,
-                fontWeight: "900",
-                marginTop: 4,
-              }}
-            >
-              Historique
-            </Text>
-          </View>
-        </View>
-
+    <Text
+      style={{
+        color: COLORS.white,
+        fontSize: 13,
+        fontWeight: "900",
+        marginTop: 3,
+        letterSpacing: 0.6,
+      }}
+    >
+      HISTORIQUE
+    </Text>
+  </View>
+</View>
         {/* ==================================================
             INTRODUCTION
         ================================================== */}
 
         <View
-          style={{
-            marginHorizontal: 24,
-        marginTop: 24,
-          }}
-        >
-          <Text
-            style={{
-              color: COLORS.text,
-              fontSize: 30,
-fontWeight: "900",
-letterSpacing: -1,
-            }}
-          >
-            Tes séances.
-          </Text>
+  style={{
+    marginHorizontal: 24,
+    marginTop: 28,
+  }}
+>
+  <Text
+    style={{
+      color: COLORS.white,
+      fontSize: 32,
+      fontWeight: "900",
+      letterSpacing: -1.3,
+    }}
+  >
+    Tes séances.
+  </Text>
 
-          <Text
-            style={{
-              color: COLORS.muted,
-              fontSize: 13,
-lineHeight: 20,
-marginTop: 8,
-maxWidth: 320,
-            }}
-          >
-            Chaque séance compte. Consulte ici
-            tout ce que tu as accompli.
-          </Text>
-        </View>
+  <View
+    style={{
+      width: 34,
+      height: 3,
+      borderRadius: 3,
+      backgroundColor: COLORS.orange,
+      marginTop: 12,
+      marginBottom: 10,
+    }}
+  />
+
+  <Text
+    style={{
+      color: COLORS.lightGray,
+      fontSize: 13,
+      lineHeight: 20,
+      maxWidth: 330,
+    }}
+  >
+    Chaque séance compte. Consulte ici
+    tout ce que tu as accompli.
+  </Text>
+</View>
 
         {/* ==================================================
             STATISTIQUES
@@ -562,12 +583,12 @@ maxWidth: 320,
           >
             <ActivityIndicator
               size="small"
-              color={COLORS.primary}
+              color={COLORS.orange}
             />
 
             <Text
               style={{
-                color: COLORS.muted,
+                color: COLORS.lightGray,
                 fontSize: 12,
                 marginTop: 14,
               }}
@@ -591,15 +612,15 @@ maxWidth: 320,
             >
               <LinearGradient
                 colors={[
-                  "#12261A",
-                  "#0D1510",
+                  COLORS.surfaceLight,
+                  COLORS.surface,
                 ]}
                 style={{
                   borderRadius: 28,
                   padding: 28,
                   borderWidth: 1,
                   borderColor:
-                    "rgba(0,255,135,0.18)",
+                    "rgba(232,80,2,0.18)",
                   alignItems: "center",
                 }}
               >
@@ -609,10 +630,10 @@ maxWidth: 320,
                     height: 70,
                     borderRadius: 24,
                     backgroundColor:
-                      "rgba(0,255,135,0.08)",
+                      "rgba(232,80,2,0.08)",
                     borderWidth: 1,
                     borderColor:
-                      "rgba(0,255,135,0.18)",
+                      "rgba(232,80,2,0.18)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -620,13 +641,13 @@ maxWidth: 320,
                   <Ionicons
                     name="barbell-outline"
                     size={32}
-                    color={COLORS.primary}
+                    color={COLORS.orange}
                   />
                 </View>
 
                 <Text
                   style={{
-                    color: COLORS.text,
+                    color: COLORS.white,
                     fontSize: 21,
                     fontWeight: "900",
                     marginTop: 20,
@@ -638,7 +659,7 @@ maxWidth: 320,
 
                 <Text
                   style={{
-                    color: COLORS.muted,
+                    color: COLORS.lightGray,
                     fontSize: 13,
                     lineHeight: 20,
                     marginTop: 7,
@@ -660,14 +681,14 @@ maxWidth: 320,
                     paddingHorizontal: 24,
                     borderRadius: 17,
                     backgroundColor:
-                      COLORS.primary,
+                      COLORS.orange,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
                   <Text
                     style={{
-                      color: "#041009",
+                      color: COLORS.black,
                       fontSize: 14,
                       fontWeight: "900",
                     }}
@@ -682,7 +703,6 @@ maxWidth: 320,
         {/* ==================================================
             LISTE DES SÉANCES
         ================================================== */}
-
         {!loading &&
           history.length > 0 && (
             <View
@@ -695,15 +715,14 @@ maxWidth: 320,
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  justifyContent:
-                    "space-between",
+                  justifyContent: "space-between",
                   marginBottom: 16,
                 }}
               >
                 <View>
                   <Text
                     style={{
-                      color: COLORS.text,
+                      color: COLORS.white,
                       fontSize: 21,
                       fontWeight: "900",
                     }}
@@ -713,7 +732,7 @@ maxWidth: 320,
 
                   <Text
                     style={{
-                      color: COLORS.muted,
+                      color: COLORS.lightGray,
                       fontSize: 12,
                       marginTop: 4,
                     }}
@@ -735,15 +754,15 @@ maxWidth: 320,
                       paddingVertical: 7,
                       borderRadius: 12,
                       backgroundColor:
-                        "rgba(0,255,135,0.08)",
+                        "rgba(232,80,2,0.08)",
                       borderWidth: 1,
                       borderColor:
-                        "rgba(0,255,135,0.15)",
+                        "rgba(232,80,2,0.15)",
                     }}
                   >
                     <Text
                       style={{
-                        color: COLORS.primary,
+                        color: COLORS.orange,
                         fontSize: 11,
                         fontWeight: "900",
                       }}
@@ -753,52 +772,54 @@ maxWidth: 320,
                   </View>
 
                   <TouchableOpacity
-                    onPress={handleClearHistory}
+  onPress={() => {
+    console.log("CORBEILLE PRESSEE");
+    handleClearHistory();
+  }}
                     activeOpacity={0.75}
                     style={{
                       width: 38,
                       height: 38,
                       borderRadius: 12,
                       backgroundColor:
-                        "rgba(255,70,70,0.08)",
+                        "rgba(193,8,1,0.08)",
                       borderWidth: 1,
                       borderColor:
-                        "rgba(255,70,70,0.18)",
+                        "rgba(193,8,1,0.18)",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
                     <Ionicons
-                      name="trash-outline"
-                      size={17}
-                      color="#FF6B6B"
-                    />
+  name="trash-outline"
+  size={17}
+  color={COLORS.red}
+/>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {history.map(
-                (workout, index) => (
-                  <WorkoutCard
-                    key={
-                      workout.id ||
-                      `${workout.date}-${index}`
-                    }
-                    workout={workout}
-                    formatDate={formatDate}
-                    formatTime={formatTime}
-                    formatDuration={
-                      formatDuration
-                    }
-                    animation={
-                      cardAnimations[index]
-                    }
-                    
-
-                    onPress={() => openWorkoutDetails(workout)}
-                  />
-                )
-              )}
+(workout, index) => (
+<WorkoutCard
+key={
+workout.id ||
+`${workout.date}-${index}`
+}
+workout={workout}
+formatDate={formatDate}
+formatTime={formatTime}
+formatDuration={formatDuration}
+animation={cardAnimations[index]}
+onPress={() =>
+openWorkoutDetails(workout)
+}
+onDelete={() => {
+  handleDeleteWorkout(workout.id);
+}}
+/>
+)
+)}
             </View>
           )}
 
@@ -811,302 +832,560 @@ maxWidth: 320,
         ================================================== */}
 
         <Modal
-          visible={!!selectedWorkout}
-          transparent
-          animationType="none"
-          onRequestClose={closeWorkoutDetails}
+  visible={!!selectedWorkout}
+  transparent
+  animationType="none"
+  onRequestClose={closeWorkoutDetails}
+>
+  <View
+    style={{
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      backgroundColor: "rgba(0,0,0,0.78)",
+    }}
+  >
+    <Animated.View
+      style={{
+        width: "100%",
+        maxWidth: 420,
+        backgroundColor: COLORS.surfaceLight,
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 22,
+        opacity: modalOpacity,
+        transform: [
+          {
+            scale: modalScale,
+          },
+          {
+            translateY: modalTranslateY,
+          },
+        ],
+        overflow: "hidden",
+      }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 22,
+          right: 22,
+          height: 3,
+          borderBottomLeftRadius: 3,
+          borderBottomRightRadius: 3,
+          backgroundColor: COLORS.orange,
+        }}
+      />
+
+      {/* EN-TÊTE */}
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 22,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            flex: 1,
+            minWidth: 0,
+          }}
         >
           <View
             style={{
-              flex: 1,
-              justifyContent: "center",
+              width: 48,
+              height: 48,
+              borderRadius: 16,
+              backgroundColor: "rgba(232,80,2,0.09)",
+              borderWidth: 1,
+              borderColor: "rgba(232,80,2,0.18)",
               alignItems: "center",
-              padding: 20,
-              backgroundColor: "rgba(0,0,0,0.72)",
+              justifyContent: "center",
             }}
           >
-            <Animated.View
+            <Ionicons
+              name="barbell-outline"
+              size={23}
+              color={COLORS.orange}
+            />
+          </View>
+
+          <View
+            style={{
+              marginLeft: 12,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Text
+              numberOfLines={1}
               style={{
-                width: "100%",
-                maxWidth: 420,
-                backgroundColor: COLORS.card,
-                borderRadius: 28,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                padding: 22,
-                opacity: modalOpacity,
-                transform: [
-                  {
-                    scale: modalScale,
-                  },
-                  {
-                    translateY: modalTranslateY,
-                  },
-                ],
+                color: COLORS.white,
+                fontSize: 18,
+                fontWeight: "900",
+                letterSpacing: -0.3,
               }}
             >
+              {selectedWorkout?.type || "Squats"}
+            </Text>
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 22,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: 15,
-                      backgroundColor:
-                        "rgba(0,255,135,0.10)",
-                      borderWidth: 1,
-                      borderColor:
-                        "rgba(0,255,135,0.18)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons
-                      name="barbell-outline"
-                      size={23}
-                      color={COLORS.primary}
-                    />
-                  </View>
-
-                  <View
-                    style={{
-                      marginLeft: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: COLORS.text,
-                        fontSize: 18,
-                        fontWeight: "900",
-                      }}
-                    >
-                      {selectedWorkout?.type || "Squats"}
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: COLORS.muted,
-                        fontSize: 11,
-                        marginTop: 3,
-                      }}
-                    >
-                      DÉTAILS DE LA SÉANCE
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={closeWorkoutDetails}
-                  activeOpacity={0.7}
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 13,
-                    backgroundColor:
-                      "rgba(255,255,255,0.05)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons
-                    name="close"
-                    size={22}
-                    color={COLORS.muted}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  gap: 10,
-                  marginBottom: 10,
-                }}
-              >
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.background,
-                    borderRadius: 18,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
-                  }}
-                >
-                  <Ionicons
-                    name="repeat-outline"
-                    size={20}
-                    color={COLORS.primary}
-                  />
-
-                  <Text
-                    style={{
-                      color: COLORS.primary,
-                      fontSize: 25,
-                      fontWeight: "900",
-                      marginTop: 10,
-                    }}
-                  >
-                    {Number(
-                      selectedWorkout?.repetitions
-                    ) || 0}
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: COLORS.muted,
-                      fontSize: 10,
-                      marginTop: 3,
-                    }}
-                  >
-                    RÉPÉTITIONS
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.background,
-                    borderRadius: 18,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
-                  }}
-                >
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={COLORS.primary}
-                  />
-
-                  <Text
-                    style={{
-                      color: COLORS.text,
-                      fontSize: 21,
-                      fontWeight: "900",
-                      marginTop: 13,
-                    }}
-                  >
-                    {formatDuration(
-                      selectedWorkout?.duration
-                    )}
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: COLORS.muted,
-                      fontSize: 10,
-                      marginTop: 3,
-                    }}
-                  >
-                    DURÉE
-                  </Text>
-                </View>
-              </View>
-
-              <View
-                style={{
-                  backgroundColor: COLORS.background,
-                  borderRadius: 18,
-                  padding: 16,
-                  marginTop: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <Ionicons
-                    name="calendar-outline"
-                    size={18}
-                    color={COLORS.primary}
-                  />
-
-                  <Text
-                    style={{
-                      color: COLORS.muted,
-                      fontSize: 10,
-                      marginLeft: 8,
-                      letterSpacing: 0.6,
-                    }}
-                  >
-                    DATE DE LA SÉANCE
-                  </Text>
-                </View>
-
-                <Text
-                  style={{
-                    color: COLORS.text,
-                    fontSize: 15,
-                    fontWeight: "800",
-                    marginTop: 9,
-                  }}
-                >
-                  {formatDate(
-                    selectedWorkout?.date
-                  )}
-                </Text>
-
-                <Text
-                  style={{
-                    color: COLORS.muted,
-                    fontSize: 12,
-                    marginTop: 3,
-                  }}
-                >
-                  {formatTime(
-                    selectedWorkout?.date
-                  )}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={closeWorkoutDetails}
-                activeOpacity={0.8}
-                style={{
-                  marginTop: 18,
-                  backgroundColor: COLORS.primary,
-                  borderRadius: 17,
-                  paddingVertical: 15,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#000",
-                    fontSize: 13,
-                    fontWeight: "900",
-                    letterSpacing: 0.8,
-                  }}
-                >
-                  FERMER
-                </Text>
-              </TouchableOpacity>
-
-            </Animated.View>
+            <Text
+              style={{
+                color: COLORS.lightGray,
+                fontSize: 10,
+                fontWeight: "800",
+                marginTop: 4,
+                letterSpacing: 1.1,
+              }}
+            >
+              DÉTAILS DE LA SÉANCE
+            </Text>
           </View>
-        </Modal>
+        </View>
+
+        <TouchableOpacity
+          onPress={closeWorkoutDetails}
+          activeOpacity={0.75}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 14,
+            backgroundColor: "rgba(255,255,255,0.05)",
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            alignItems: "center",
+            justifyContent: "center",
+            marginLeft: 12,
+          }}
+        >
+          <Ionicons
+            name="close"
+            size={20}
+            color={COLORS.lightGray}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* STATISTIQUES */}
+
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 10,
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: COLORS.black,
+            borderRadius: 19,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+          }}
+        >
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 11,
+              backgroundColor: "rgba(232,80,2,0.09)",
+              borderWidth: 1,
+              borderColor: "rgba(232,80,2,0.16)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons
+              name="repeat-outline"
+              size={17}
+              color={COLORS.orange}
+            />
+          </View>
+
+          <Text
+            style={{
+              color: COLORS.orange,
+              fontSize: 25,
+              fontWeight: "900",
+              marginTop: 12,
+              letterSpacing: -0.6,
+            }}
+          >
+            {Number(selectedWorkout?.repetitions) || 0}
+          </Text>
+
+          <Text
+            style={{
+              color: COLORS.gray,
+              fontSize: 9,
+              fontWeight: "800",
+              marginTop: 4,
+              letterSpacing: 0.8,
+            }}
+          >
+            RÉPÉTITIONS
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: COLORS.black,
+            borderRadius: 19,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+          }}
+        >
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 11,
+              backgroundColor: "rgba(232,80,2,0.09)",
+              borderWidth: 1,
+              borderColor: "rgba(232,80,2,0.16)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons
+              name="time-outline"
+              size={17}
+              color={COLORS.orange}
+            />
+          </View>
+
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            style={{
+              color: COLORS.white,
+              fontSize: 21,
+              fontWeight: "900",
+              marginTop: 13,
+              letterSpacing: -0.5,
+            }}
+          >
+            {formatDuration(selectedWorkout?.duration)}
+          </Text>
+
+          <Text
+            style={{
+              color: COLORS.gray,
+              fontSize: 9,
+              fontWeight: "800",
+              marginTop: 4,
+              letterSpacing: 0.8,
+            }}
+          >
+            DURÉE
+          </Text>
+        </View>
+      </View>
+
+      {/* DATE */}
+
+      <View
+        style={{
+          backgroundColor: COLORS.black,
+          borderRadius: 19,
+          padding: 16,
+          marginTop: 10,
+          borderWidth: 1,
+          borderColor: COLORS.border,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              backgroundColor: "rgba(232,80,2,0.09)",
+              borderWidth: 1,
+              borderColor: "rgba(232,80,2,0.16)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={COLORS.orange}
+            />
+          </View>
+
+          <Text
+            style={{
+              color: COLORS.lightGray,
+              fontSize: 9,
+              fontWeight: "800",
+              marginLeft: 9,
+              letterSpacing: 0.9,
+            }}
+          >
+            DATE DE LA SÉANCE
+          </Text>
+        </View>
+
         <Text
           style={{
-            color: COLORS.mutedDark,
+            color: COLORS.white,
+            fontSize: 15,
+            fontWeight: "900",
+            marginTop: 12,
+          }}
+        >
+          {formatDate(selectedWorkout?.date)}
+        </Text>
+
+        <Text
+          style={{
+            color: COLORS.gray,
+            fontSize: 11,
+            fontWeight: "700",
+            marginTop: 4,
+          }}
+        >
+          {formatTime(selectedWorkout?.date)}
+        </Text>
+      </View>
+
+      {/* ACTIONS */}
+
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 10,
+          marginTop: 18,
+        }}
+      >
+        <TouchableOpacity
+          onPress={closeWorkoutDetails}
+          activeOpacity={0.8}
+          style={{
+            flex: 1,
+            height: 52,
+            borderRadius: 17,
+            backgroundColor: "rgba(255,255,255,0.04)",
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: COLORS.white,
+              fontSize: 11,
+              fontWeight: "900",
+              letterSpacing: 0.8,
+            }}
+          >
+            FERMER
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (!selectedWorkout?.id) {
+              return;
+            }
+
+            handleDeleteWorkout(selectedWorkout.id);
+          }}
+          activeOpacity={0.8}
+          style={{
+            flex: 1,
+            height: 52,
+            borderRadius: 17,
+            backgroundColor: "rgba(193,8,1,0.08)",
+            borderWidth: 1,
+            borderColor: "rgba(193,8,1,0.18)",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+          }}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={16}
+            color={COLORS.red}
+          />
+
+          <Text
+            style={{
+              color: COLORS.red,
+              fontSize: 11,
+              fontWeight: "900",
+              letterSpacing: 0.7,
+              marginLeft: 7,
+            }}
+          >
+            SUPPRIMER
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  </View>
+</Modal>
+
+{/* ==================================================
+    MODAL — CONFIRMATION SUPPRESSION
+================================================== */}
+
+<Modal
+  visible={showClearConfirm}
+  transparent
+  animationType="fade"
+  onRequestClose={() =>
+    setShowClearConfirm(false)
+  }
+>
+  <View
+    style={{
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: "rgba(0,0,0,0.76)",
+    }}
+  >
+    <View
+      style={{
+        width: "100%",
+        maxWidth: 390,
+        backgroundColor: COLORS.surfaceLight,
+        borderRadius: 26,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: 24,
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 17,
+          backgroundColor:
+            "rgba(193,8,1,0.08)",
+          borderWidth: 1,
+          borderColor:
+            "rgba(193,8,1,0.18)",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 18,
+        }}
+      >
+        <Ionicons
+          name="trash-outline"
+          size={24}
+          color={COLORS.red}
+        />
+      </View>
+
+      <Text
+        style={{
+          color: COLORS.white,
+          fontSize: 21,
+          fontWeight: "900",
+        }}
+      >
+        Effacer l’historique ?
+      </Text>
+
+      <Text
+        style={{
+          color: COLORS.lightGray,
+          fontSize: 13,
+          lineHeight: 20,
+          marginTop: 8,
+        }}
+      >
+        Toutes tes séances enregistrées seront
+        supprimées définitivement.
+      </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 10,
+          marginTop: 24,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() =>
+            setShowClearConfirm(false)
+          }
+          activeOpacity={0.8}
+          style={{
+            flex: 1,
+            height: 50,
+            borderRadius: 16,
+            backgroundColor:
+              "rgba(255,255,255,0.05)",
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: COLORS.white,
+              fontSize: 13,
+              fontWeight: "800",
+            }}
+          >
+            Annuler
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={confirmClearHistory}
+          activeOpacity={0.8}
+          style={{
+            flex: 1,
+            height: 50,
+            borderRadius: 16,
+            backgroundColor: COLORS.red,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 13,
+              fontWeight: "900",
+            }}
+          >
+            Effacer
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
+        <Text
+          style={{
+            color: COLORS.gray,
             fontSize: 10,
             textAlign: "center",
             marginTop: 40,
@@ -1119,7 +1398,7 @@ maxWidth: 320,
         
         <Text
           style={{
-            color: COLORS.mutedDark,
+            color: COLORS.gray,
             fontSize: 10,
             textAlign: "center",
             marginTop: 5,
@@ -1148,23 +1427,23 @@ function HistoryStat({
     useRef(new Animated.Value(0)).current;
 
   const statScale =
-    useRef(new Animated.Value(0.88)).current;
+    useRef(new Animated.Value(0.92)).current;
 
   useEffect(() => {
     const timer = setTimeout(() => {
       Animated.parallel([
-      Animated.timing(statOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
+        Animated.timing(statOpacity, {
+          toValue: 1,
+          duration: 420,
+          useNativeDriver: true,
+        }),
 
-      Animated.spring(statScale, {
-        toValue: 1,
-        friction: 7,
-        tension: 55,
-        useNativeDriver: true,
-      }),
+        Animated.spring(statScale, {
+          toValue: 1,
+          friction: 7,
+          tension: 65,
+          useNativeDriver: true,
+        }),
       ]).start();
     }, delay);
 
@@ -1175,41 +1454,78 @@ function HistoryStat({
     <Animated.View
       style={{
         flex: 1,
-        backgroundColor: COLORS.card,
-        borderRadius: 18,
-        padding: 14,
+        minHeight: 118,
+        backgroundColor: COLORS.surfaceLight,
+        borderRadius: 20,
+        padding: 15,
         borderWidth: 1,
         borderColor: COLORS.border,
         opacity: statOpacity,
         transform: [
-          { scale: statScale },
+          {
+            scale: statScale,
+          },
         ],
+        overflow: "hidden",
       }}
     >
-      <Ionicons
-        name={icon}
-        size={18}
-        color={COLORS.primary}
+      {/* Accent supérieur */}
+      <View
+        style={{
+          width: 24,
+          height: 3,
+          borderRadius: 3,
+          backgroundColor: COLORS.orange,
+          marginBottom: 14,
+        }}
       />
 
+      {/* Icône */}
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 11,
+          backgroundColor: "rgba(232,80,2,0.10)",
+          borderWidth: 1,
+          borderColor: "rgba(232,80,2,0.18)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons
+          name={icon}
+          size={16}
+          color={COLORS.orange}
+        />
+      </View>
+
+      {/* Valeur */}
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
+        minimumFontScale={0.7}
         style={{
-          color: COLORS.text,
-          fontSize: 17,
+          color: COLORS.white,
+          fontSize: 20,
           fontWeight: "900",
-          marginTop: 10,
+          marginTop: 12,
+          letterSpacing: -0.4,
         }}
       >
         {value}
       </Text>
 
+      {/* Label */}
       <Text
+        numberOfLines={1}
         style={{
-          color: COLORS.muted,
-          fontSize: 10,
-          marginTop: 3,
+          color: COLORS.gray,
+          fontSize: 9,
+          fontWeight: "800",
+          marginTop: 4,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
         }}
       >
         {label}
@@ -1230,9 +1546,10 @@ function WorkoutCard({
   formatTime,
   formatDuration,
   onPress,
+  onDelete,
   animation,
 }) {
-    const pressScale =
+  const pressScale =
     useRef(new Animated.Value(1)).current;
 
   const repetitions =
@@ -1256,17 +1573,19 @@ function WorkoutCard({
     }).start();
   };
 
-return (
+  return (
     <TouchableOpacity
       activeOpacity={0.82}
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       style={{
         marginBottom: 12,
       }}
     >
       <Animated.View
         style={{
-          backgroundColor: COLORS.card,
+          backgroundColor: COLORS.surfaceLight,
           borderRadius: 22,
           padding: 18,
           borderWidth: 1,
@@ -1288,177 +1607,160 @@ return (
           overflow: "hidden",
         }}
       >
-        <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-        }}
-      >
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 16,
-            backgroundColor:
-              "rgba(0,255,135,0.08)",
-            borderWidth: 1,
-            borderColor:
-              "rgba(0,255,135,0.12)",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons
-            name="barbell-outline"
-            size={23}
-            color={COLORS.primary}
-          />
-        </View>
-
-        <View
-          style={{
-            flex: 1,
-            marginLeft: 14,
-          }}
-        >
-          <Text
-            style={{
-              color: COLORS.text,
-              fontSize: 16,
-              fontWeight: "900",
-            }}
-          >
-            {workout.type || "Squats"}
-          </Text>
-
-          <Text
-            style={{
-              color: COLORS.muted,
-              fontSize: 11,
-              marginTop: 4,
-            }}
-          >
-            {formatDate(workout.date)}
-            {" · "}
-            {formatTime(workout.date)}
-          </Text>
-        </View>
-
-        <View
-          style={{
-            alignItems: "flex-end",
-          }}
-        >
-          <Text
-            style={{
-              color: COLORS.primary,
-              fontSize: 17,
-              fontWeight: "900",
-            }}
-          >
-            {repetitions.toLocaleString(
-              "fr-FR"
-            )}
-          </Text>
-
-          <Text
-            style={{
-              color: COLORS.muted,
-              fontSize: 10,
-              marginTop: 2,
-            }}
-          >
-            Répétitions
-          </Text>
-        </View>
-      </View>
-
-      <View
-        style={{
-          height: 1,
-          backgroundColor: COLORS.border,
-          marginVertical: 16,
-        }}
-      />
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent:
-            "space-between",
-        }}
-      >
+        {/* EN-TÊTE */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
           }}
         >
-          <Ionicons
-            name="time-outline"
-            size={15}
-            color={COLORS.muted}
-          />
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 16,
+              backgroundColor:
+                "rgba(232,80,2,0.08)",
+              borderWidth: 1,
+              borderColor:
+                "rgba(232,80,2,0.16)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons
+              name="barbell-outline"
+              size={22}
+              color={COLORS.orange}
+            />
+          </View>
+
+          <View
+            style={{
+              flex: 1,
+              marginLeft: 14,
+              minWidth: 0,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                color: COLORS.white,
+                fontSize: 16,
+                fontWeight: "900",
+                letterSpacing: -0.2,
+              }}
+            >
+              {workout.type || "Squats"}
+            </Text>
+
+            <Text
+              numberOfLines={1}
+              style={{
+                color: COLORS.gray,
+                fontSize: 10,
+                fontWeight: "700",
+                marginTop: 5,
+                letterSpacing: 0.2,
+              }}
+            >
+              {formatDate(workout.date)}
+              {" · "}
+              {formatTime(workout.date)}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              alignItems: "flex-end",
+              marginLeft: 10,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                color: COLORS.orange,
+                fontSize: 18,
+                fontWeight: "900",
+                letterSpacing: -0.4,
+              }}
+            >
+              {repetitions.toLocaleString(
+                "fr-FR"
+              )}
+            </Text>
+
+            <Text
+              style={{
+                color: COLORS.gray,
+                fontSize: 9,
+                fontWeight: "800",
+                marginTop: 3,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+              }}
+            >
+              Répétitions
+            </Text>
+          </View>
+        </View>
+
+        {/* SÉPARATION */}
+        <View
+          style={{
+            height: 1,
+            backgroundColor: COLORS.border,
+            marginVertical: 16,
+          }}
+        />
+
+        {/* DURÉE */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Ionicons
+              name="time-outline"
+              size={15}
+              color={COLORS.gray}
+            />
+
+            <Text
+              style={{
+                color: COLORS.gray,
+                fontSize: 10,
+                fontWeight: "800",
+                marginLeft: 7,
+                letterSpacing: 0.4,
+                textTransform: "uppercase",
+              }}
+            >
+              Durée
+            </Text>
+          </View>
 
           <Text
             style={{
-              color: COLORS.muted,
-              fontSize: 11,
-              marginLeft: 6,
+              color: COLORS.white,
+              fontSize: 12,
+              fontWeight: "900",
             }}
           >
-            Durée
+            {formatDuration(
+              workout.duration
+            )}
           </Text>
         </View>
-
-        <Text
-          style={{
-            color: COLORS.text,
-            fontSize: 12,
-            fontWeight: "800",
-          }}
-        >
-          {formatDuration(
-            workout.duration
-          )}
-        </Text>
-      </View>
       </Animated.View>
     </TouchableOpacity>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
