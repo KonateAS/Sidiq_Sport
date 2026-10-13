@@ -20,6 +20,8 @@ import {
   deleteWorkout,
 } from "../lib/workoutStorage";
 
+import { getWorkoutType } from "../lib/workoutTypes";
+
 /*
  * ============================================================
  * COULEURS
@@ -45,6 +47,111 @@ const COLORS = {
 
 /*
  * ============================================================
+ * HELPERS — MÉTRIQUES DES SÉANCES
+ * ============================================================
+ */
+
+const getWorkoutMode = (workout) => {
+  if (workout?.sets != null || workout?.repetitionsPerSet != null) {
+    return "sets";
+  }
+
+  if (workout?.distance != null) {
+    return "distance";
+  }
+
+  if (workout?.duration != null) {
+    return "duration";
+  }
+
+  return "repetitions";
+};
+
+const getWorkoutMetric = (workout) => {
+  const mode = getWorkoutMode(workout);
+
+  if (mode === "sets") {
+    const sets = Number(workout?.sets) || 0;
+    const repetitionsPerSet = Number(workout?.repetitionsPerSet) || 0;
+
+    return {
+      value: sets * repetitionsPerSet,
+      label: "répétitions",
+      mode,
+    };
+  }
+
+  if (mode === "distance") {
+    return {
+      value: Number(workout?.distance) || 0,
+      label: workout?.unit || "km",
+      mode,
+    };
+  }
+
+  if (mode === "duration") {
+    return {
+      value: Number(workout?.duration) || 0,
+      label: "durée",
+      mode,
+    };
+  }
+
+  return {
+    value: Number(workout?.repetitions) || 0,
+    label: workout?.unit || "répétitions",
+    mode,
+  };
+};
+
+const formatMetricValue = (workout, formatDuration) => {
+  const metric = getWorkoutMetric(workout);
+
+  if (metric.mode === "sets") {
+    const sets = Number(workout?.sets) || 0;
+    const repetitionsPerSet = Number(workout?.repetitionsPerSet) || 0;
+
+    if (workout?.workoutId) {
+      const workoutType = getWorkoutType(workout.workoutId);
+
+      if (workoutType?.structure === "sets_reps") {
+        return {
+          value: `${sets * repetitionsPerSet}`,
+          label: "répétitions",
+        };
+      }
+    }
+
+    return {
+      value: `${sets} × ${repetitionsPerSet}`,
+      label: "séries",
+    };
+  }
+
+  if (metric.mode === "distance") {
+    return {
+      value: Number(metric.value).toLocaleString("fr-FR", {
+        maximumFractionDigits: 1,
+      }),
+      label: metric.label,
+    };
+  }
+
+  if (metric.mode === "duration") {
+    return {
+      value: formatDuration(metric.value),
+      label: "durée",
+    };
+  }
+
+  return {
+    value: Number(metric.value).toLocaleString("fr-FR"),
+    label: metric.label,
+  };
+};
+
+/*
+ * ============================================================
  * ÉCRAN HISTORIQUE
  * ============================================================
  */
@@ -57,27 +164,18 @@ export default function HistoryScreen() {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const modalOpacity = useRef(
-    new Animated.Value(0)
-  ).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
 
-  const modalScale = useRef(
-    new Animated.Value(0.92)
-  ).current;
+  const modalScale = useRef(new Animated.Value(0.92)).current;
 
-  const modalTranslateY = useRef(
-    new Animated.Value(40)
-  ).current;
+  const modalTranslateY = useRef(new Animated.Value(40)).current;
 
   const cardAnimations = useRef(
-    Array.from(
-      { length: 30 },
-      () => ({
-        opacity: new Animated.Value(0),
-        translateY: new Animated.Value(24),
-        scale: new Animated.Value(0.97),
-      })
-    )
+    Array.from({ length: 30 }, () => ({
+      opacity: new Animated.Value(0),
+      translateY: new Animated.Value(24),
+      scale: new Animated.Value(0.97),
+    })),
   ).current;
 
   /*
@@ -164,16 +262,9 @@ export default function HistoryScreen() {
 
       const storedHistory = await getWorkoutHistory();
 
-      setHistory(
-        Array.isArray(storedHistory)
-          ? storedHistory
-          : []
-      );
+      setHistory(Array.isArray(storedHistory) ? storedHistory : []);
     } catch (error) {
-      console.log(
-        "Impossible de charger l'historique :",
-        error
-      );
+      console.log("Impossible de charger l'historique :", error);
 
       setHistory([]);
     } finally {
@@ -189,7 +280,7 @@ export default function HistoryScreen() {
   useFocusEffect(
     useCallback(() => {
       loadHistory();
-    }, [loadHistory])
+    }, [loadHistory]),
   );
 
   /*
@@ -203,10 +294,7 @@ export default function HistoryScreen() {
       return;
     }
 
-    const animations = cardAnimations.slice(
-      0,
-      history.length
-    );
+    const animations = cardAnimations.slice(0, history.length);
 
     animations.forEach((animation) => {
       animation.opacity.setValue(0);
@@ -237,8 +325,8 @@ export default function HistoryScreen() {
             friction: 9,
             useNativeDriver: true,
           }),
-        ])
-      )
+        ]),
+      ),
     ).start();
   }, [history]);
 
@@ -263,10 +351,7 @@ export default function HistoryScreen() {
       setHistory([]);
       setShowClearConfirm(false);
     } catch (error) {
-      console.log(
-        "Impossible d'effacer l'historique :",
-        error
-      );
+      console.log("Impossible d'effacer l'historique :", error);
     }
   };
 
@@ -286,18 +371,13 @@ export default function HistoryScreen() {
 
       setHistory((currentHistory) =>
         currentHistory.filter(
-          (workout) =>
-            String(workout.id) !==
-            String(workoutId)
-        )
+          (workout) => String(workout.id) !== String(workoutId),
+        ),
       );
 
       setSelectedWorkout(null);
     } catch (error) {
-      console.log(
-        "Impossible de supprimer la séance :",
-        error
-      );
+      console.log("Impossible de supprimer la séance :", error);
     }
   };
 
@@ -310,34 +390,22 @@ export default function HistoryScreen() {
   const formatDuration = (seconds) => {
     const totalSeconds = Number(seconds) || 0;
 
-    const minutes = Math.floor(
-      totalSeconds / 60
-    );
+    const minutes = Math.floor(totalSeconds / 60);
 
     const remainingSeconds = totalSeconds % 60;
 
     if (minutes >= 60) {
-      const hours = Math.floor(
-        minutes / 60
-      );
+      const hours = Math.floor(minutes / 60);
 
       const remainingMinutes = minutes % 60;
 
-      return `${String(hours).padStart(
-        2,
-        "0"
-      )}:${String(
-        remainingMinutes
-      ).padStart(2, "0")}:${String(
-        remainingSeconds
-      ).padStart(2, "0")}`;
+      return `${String(hours).padStart(2, "0")}:${String(
+        remainingMinutes,
+      ).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
     }
 
-    return `${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(
-      remainingSeconds
+    return `${String(minutes).padStart(2, "0")}:${String(
+      remainingSeconds,
     ).padStart(2, "0")}`;
   };
 
@@ -358,14 +426,11 @@ export default function HistoryScreen() {
       return "Date inconnue";
     }
 
-    return date.toLocaleDateString(
-      "fr-FR",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   /*
@@ -385,13 +450,10 @@ export default function HistoryScreen() {
       return "--:--";
     }
 
-    return date.toLocaleTimeString(
-      "fr-FR",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    );
+    return date.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   /*
@@ -402,19 +464,30 @@ export default function HistoryScreen() {
 
   const totalSessions = history.length;
 
-  const totalRepetitions = history.reduce(
-    (total, workout) =>
-      total +
-      (Number(workout.repetitions) || 0),
-    0
-  );
+  const totalRepetitions = history.reduce((total, workout) => {
+    const mode = getWorkoutMode(workout);
+
+    if (mode === "repetitions") {
+      return total + (Number(workout.repetitions) || 0);
+    }
+
+    if (mode === "sets") {
+      return (
+        total +
+        (Number(workout.sets) || 0) * (Number(workout.repetitionsPerSet) || 0)
+      );
+    }
+
+    return total;
+  }, 0);
 
   const totalDuration = history.reduce(
-    (total, workout) =>
-      total +
-      (Number(workout.duration) || 0),
-    0
+    (total, workout) => total + (Number(workout.duration) || 0),
+    0,
   );
+  const selectedWorkoutType = getWorkoutType(selectedWorkout?.workoutId);
+
+  const selectedWorkoutIcon = selectedWorkoutType?.icon || "barbell-outline";
 
   /*
    * ============================================================
@@ -462,11 +535,7 @@ export default function HistoryScreen() {
               justifyContent: "center",
             }}
           >
-            <Ionicons
-              name="arrow-back"
-              size={18}
-              color={COLORS.white}
-            />
+            <Ionicons name="arrow-back" size={18} color={COLORS.white} />
           </TouchableOpacity>
 
           <View
@@ -539,8 +608,7 @@ export default function HistoryScreen() {
               maxWidth: 330,
             }}
           >
-            Chaque séance compte. Consulte ici
-            tout ce que tu as accompli.
+            Chaque séance compte. Consulte ici tout ce que tu as accompli.
           </Text>
         </View>
 
@@ -565,17 +633,19 @@ export default function HistoryScreen() {
             />
 
             <HistoryStat
-              value={totalRepetitions.toLocaleString(
-                "fr-FR"
-              )}
-              label="Répétitions"
+              value={
+                totalRepetitions
+                  ? totalRepetitions.toLocaleString("fr-FR")
+                  : "—"
+              }
+              label="répétitions"
               icon="repeat-outline"
               delay={90}
             />
 
             <HistoryStat
-              value={formatDuration(totalDuration)}
-              label="Temps"
+              value={totalDuration ? formatDuration(totalDuration) : "—"}
+              label="temps actif"
               icon="time-outline"
               delay={180}
             />
@@ -594,10 +664,7 @@ export default function HistoryScreen() {
               paddingVertical: 80,
             }}
           >
-            <ActivityIndicator
-              size="small"
-              color={COLORS.orange}
-            />
+            <ActivityIndicator size="small" color={COLORS.orange} />
 
             <Text
               style={{
@@ -623,16 +690,12 @@ export default function HistoryScreen() {
             }}
           >
             <LinearGradient
-              colors={[
-                COLORS.surfaceLight,
-                COLORS.surface,
-              ]}
+              colors={[COLORS.surfaceLight, COLORS.surface]}
               style={{
                 borderRadius: 28,
                 padding: 28,
                 borderWidth: 1,
-                borderColor:
-                  "rgba(232,80,2,0.18)",
+                borderColor: "rgba(232,80,2,0.18)",
                 alignItems: "center",
               }}
             >
@@ -641,11 +704,9 @@ export default function HistoryScreen() {
                   width: 70,
                   height: 70,
                   borderRadius: 24,
-                  backgroundColor:
-                    "rgba(232,80,2,0.08)",
+                  backgroundColor: "rgba(232,80,2,0.08)",
                   borderWidth: 1,
-                  borderColor:
-                    "rgba(232,80,2,0.18)",
+                  borderColor: "rgba(232,80,2,0.18)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -678,22 +739,18 @@ export default function HistoryScreen() {
                   textAlign: "center",
                 }}
               >
-                Tes prochaines séances
-                apparaîtront ici.
+                Tes prochaines séances apparaîtront ici.
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  router.push("/workout")
-                }
+                onPress={() => router.push("/sessions")}
                 activeOpacity={0.85}
                 style={{
                   marginTop: 22,
                   height: 52,
                   paddingHorizontal: 24,
                   borderRadius: 17,
-                  backgroundColor:
-                    COLORS.orange,
+                  backgroundColor: COLORS.orange,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -765,11 +822,9 @@ export default function HistoryScreen() {
                     paddingHorizontal: 11,
                     paddingVertical: 7,
                     borderRadius: 12,
-                    backgroundColor:
-                      "rgba(232,80,2,0.08)",
+                    backgroundColor: "rgba(232,80,2,0.08)",
                     borderWidth: 1,
-                    borderColor:
-                      "rgba(232,80,2,0.15)",
+                    borderColor: "rgba(232,80,2,0.15)",
                   }}
                 >
                   <Text
@@ -790,41 +845,28 @@ export default function HistoryScreen() {
                     width: 38,
                     height: 38,
                     borderRadius: 12,
-                    backgroundColor:
-                      "rgba(193,8,1,0.08)",
+                    backgroundColor: "rgba(193,8,1,0.08)",
                     borderWidth: 1,
-                    borderColor:
-                      "rgba(193,8,1,0.18)",
+                    borderColor: "rgba(193,8,1,0.18)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Ionicons
-                    name="trash-outline"
-                    size={17}
-                    color={COLORS.red}
-                  />
+                  <Ionicons name="trash-outline" size={17} color={COLORS.red} />
                 </TouchableOpacity>
               </View>
             </View>
 
             {history.map((workout, index) => (
               <WorkoutCard
-                key={
-                  workout.id ||
-                  `${workout.date}-${index}`
-                }
+                key={workout.id || `${workout.date}-${index}`}
                 workout={workout}
                 formatDate={formatDate}
                 formatTime={formatTime}
                 formatDuration={formatDuration}
                 animation={cardAnimations[index]}
-                onPress={() =>
-                  openWorkoutDetails(workout)
-                }
-                onDelete={() =>
-                  handleDeleteWorkout(workout.id)
-                }
+                onPress={() => openWorkoutDetails(workout)}
+                onDelete={() => handleDeleteWorkout(workout.id)}
               />
             ))}
           </View>
@@ -846,16 +888,14 @@ export default function HistoryScreen() {
               justifyContent: "center",
               alignItems: "center",
               paddingHorizontal: 20,
-              backgroundColor:
-                "rgba(0,0,0,0.78)",
+              backgroundColor: "rgba(0,0,0,0.78)",
             }}
           >
             <Animated.View
               style={{
                 width: "100%",
                 maxWidth: 420,
-                backgroundColor:
-                  COLORS.surfaceLight,
+                backgroundColor: COLORS.surfaceLight,
                 borderRadius: 28,
                 borderWidth: 1,
                 borderColor: COLORS.border,
@@ -881,8 +921,7 @@ export default function HistoryScreen() {
                   height: 3,
                   borderBottomLeftRadius: 3,
                   borderBottomRightRadius: 3,
-                  backgroundColor:
-                    COLORS.orange,
+                  backgroundColor: COLORS.orange,
                 }}
               />
 
@@ -909,18 +948,16 @@ export default function HistoryScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: 16,
-                      backgroundColor:
-                        "rgba(232,80,2,0.09)",
+                      backgroundColor: "rgba(232,80,2,0.09)",
                       borderWidth: 1,
-                      borderColor:
-                        "rgba(232,80,2,0.18)",
+                      borderColor: "rgba(232,80,2,0.18)",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
                     <Ionicons
-                      name="barbell-outline"
-                      size={23}
+                      name={selectedWorkoutIcon}
+                      size={22}
                       color={COLORS.orange}
                     />
                   </View>
@@ -941,8 +978,7 @@ export default function HistoryScreen() {
                         letterSpacing: -0.3,
                       }}
                     >
-                      {selectedWorkout?.type ||
-                        "Squats"}
+                      {selectedWorkout?.type || "Squats"}
                     </Text>
 
                     <Text
@@ -966,21 +1002,15 @@ export default function HistoryScreen() {
                     width: 40,
                     height: 40,
                     borderRadius: 14,
-                    backgroundColor:
-                      "rgba(255,255,255,0.05)",
+                    backgroundColor: "rgba(255,255,255,0.05)",
                     borderWidth: 1,
-                    borderColor:
-                      COLORS.border,
+                    borderColor: COLORS.border,
                     alignItems: "center",
                     justifyContent: "center",
                     marginLeft: 12,
                   }}
                 >
-                  <Ionicons
-                    name="close"
-                    size={20}
-                    color={COLORS.lightGray}
-                  />
+                  <Ionicons name="close" size={20} color={COLORS.lightGray} />
                 </TouchableOpacity>
               </View>
 
@@ -992,64 +1022,10 @@ export default function HistoryScreen() {
                   gap: 10,
                 }}
               >
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.black,
-                    borderRadius: 19,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor:
-                      COLORS.border,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 11,
-                      backgroundColor:
-                        "rgba(232,80,2,0.09)",
-                      borderWidth: 1,
-                      borderColor:
-                        "rgba(232,80,2,0.16)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons
-                      name="repeat-outline"
-                      size={17}
-                      color={COLORS.orange}
-                    />
-                  </View>
-
-                  <Text
-                    style={{
-                      color: COLORS.orange,
-                      fontSize: 25,
-                      fontWeight: "900",
-                      marginTop: 12,
-                      letterSpacing: -0.6,
-                    }}
-                  >
-                    {Number(
-                      selectedWorkout?.repetitions
-                    ) || 0}
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: COLORS.gray,
-                      fontSize: 9,
-                      fontWeight: "800",
-                      marginTop: 4,
-                      letterSpacing: 0.8,
-                    }}
-                  >
-                    RÉPÉTITIONS
-                  </Text>
-                </View>
+                <WorkoutDetailMetric
+                  workout={selectedWorkout}
+                  formatDuration={formatDuration}
+                />
 
                 <View
                   style={{
@@ -1058,8 +1034,7 @@ export default function HistoryScreen() {
                     borderRadius: 19,
                     padding: 16,
                     borderWidth: 1,
-                    borderColor:
-                      COLORS.border,
+                    borderColor: COLORS.border,
                   }}
                 >
                   <View
@@ -1067,11 +1042,9 @@ export default function HistoryScreen() {
                       width: 34,
                       height: 34,
                       borderRadius: 11,
-                      backgroundColor:
-                        "rgba(232,80,2,0.09)",
+                      backgroundColor: "rgba(232,80,2,0.09)",
                       borderWidth: 1,
-                      borderColor:
-                        "rgba(232,80,2,0.16)",
+                      borderColor: "rgba(232,80,2,0.16)",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1095,9 +1068,9 @@ export default function HistoryScreen() {
                       letterSpacing: -0.5,
                     }}
                   >
-                    {formatDuration(
-                      selectedWorkout?.duration
-                    )}
+                    {selectedWorkout?.duration != null
+                      ? formatDuration(selectedWorkout.duration)
+                      : "—"}
                   </Text>
 
                   <Text
@@ -1113,6 +1086,72 @@ export default function HistoryScreen() {
                   </Text>
                 </View>
               </View>
+
+              {/* STRUCTURE DES SÉRIES */}
+
+              {getWorkoutMode(selectedWorkout) === "sets" && (
+                <View
+                  style={{
+                    backgroundColor: COLORS.black,
+                    borderRadius: 19,
+                    padding: 16,
+                    marginTop: 10,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 10,
+                        backgroundColor: "rgba(232,80,2,0.09)",
+                        borderWidth: 1,
+                        borderColor: "rgba(232,80,2,0.16)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="layers-outline"
+                        size={16}
+                        color={COLORS.orange}
+                      />
+                    </View>
+
+                    <Text
+                      style={{
+                        color: COLORS.lightGray,
+                        fontSize: 9,
+                        fontWeight: "800",
+                        marginLeft: 9,
+                        letterSpacing: 0.9,
+                      }}
+                    >
+                      STRUCTURE
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={{
+                      color: COLORS.white,
+                      fontSize: 15,
+                      fontWeight: "900",
+                      marginTop: 12,
+                    }}
+                  >
+                    {Number(selectedWorkout?.sets) || 0} séries ×{" "}
+                    {Number(selectedWorkout?.repetitionsPerSet) || 0}{" "}
+                    répétitions
+                  </Text>
+                </View>
+              )}
 
               {/* DATE */}
 
@@ -1137,11 +1176,9 @@ export default function HistoryScreen() {
                       width: 32,
                       height: 32,
                       borderRadius: 10,
-                      backgroundColor:
-                        "rgba(232,80,2,0.09)",
+                      backgroundColor: "rgba(232,80,2,0.09)",
                       borderWidth: 1,
-                      borderColor:
-                        "rgba(232,80,2,0.16)",
+                      borderColor: "rgba(232,80,2,0.16)",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1174,9 +1211,7 @@ export default function HistoryScreen() {
                     marginTop: 12,
                   }}
                 >
-                  {formatDate(
-                    selectedWorkout?.date
-                  )}
+                  {formatDate(selectedWorkout?.date)}
                 </Text>
 
                 <Text
@@ -1187,9 +1222,7 @@ export default function HistoryScreen() {
                     marginTop: 4,
                   }}
                 >
-                  {formatTime(
-                    selectedWorkout?.date
-                  )}
+                  {formatTime(selectedWorkout?.date)}
                 </Text>
               </View>
 
@@ -1209,11 +1242,9 @@ export default function HistoryScreen() {
                     flex: 1,
                     height: 52,
                     borderRadius: 17,
-                    backgroundColor:
-                      "rgba(255,255,255,0.04)",
+                    backgroundColor: "rgba(255,255,255,0.04)",
                     borderWidth: 1,
-                    borderColor:
-                      COLORS.border,
+                    borderColor: COLORS.border,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -1236,30 +1267,22 @@ export default function HistoryScreen() {
                       return;
                     }
 
-                    handleDeleteWorkout(
-                      selectedWorkout.id
-                    );
+                    handleDeleteWorkout(selectedWorkout.id);
                   }}
                   activeOpacity={0.8}
                   style={{
                     flex: 1,
                     height: 52,
                     borderRadius: 17,
-                    backgroundColor:
-                      "rgba(193,8,1,0.08)",
+                    backgroundColor: "rgba(193,8,1,0.08)",
                     borderWidth: 1,
-                    borderColor:
-                      "rgba(193,8,1,0.18)",
+                    borderColor: "rgba(193,8,1,0.18)",
                     alignItems: "center",
                     justifyContent: "center",
                     flexDirection: "row",
                   }}
                 >
-                  <Ionicons
-                    name="trash-outline"
-                    size={16}
-                    color={COLORS.red}
-                  />
+                  <Ionicons name="trash-outline" size={16} color={COLORS.red} />
 
                   <Text
                     style={{
@@ -1286,9 +1309,7 @@ export default function HistoryScreen() {
           visible={showClearConfirm}
           transparent
           animationType="fade"
-          onRequestClose={() =>
-            setShowClearConfirm(false)
-          }
+          onRequestClose={() => setShowClearConfirm(false)}
         >
           <View
             style={{
@@ -1296,16 +1317,14 @@ export default function HistoryScreen() {
               justifyContent: "center",
               alignItems: "center",
               padding: 24,
-              backgroundColor:
-                "rgba(0,0,0,0.76)",
+              backgroundColor: "rgba(0,0,0,0.76)",
             }}
           >
             <View
               style={{
                 width: "100%",
                 maxWidth: 390,
-                backgroundColor:
-                  COLORS.surfaceLight,
+                backgroundColor: COLORS.surfaceLight,
                 borderRadius: 26,
                 borderWidth: 1,
                 borderColor: COLORS.border,
@@ -1317,21 +1336,15 @@ export default function HistoryScreen() {
                   width: 52,
                   height: 52,
                   borderRadius: 17,
-                  backgroundColor:
-                    "rgba(193,8,1,0.08)",
+                  backgroundColor: "rgba(193,8,1,0.08)",
                   borderWidth: 1,
-                  borderColor:
-                    "rgba(193,8,1,0.18)",
+                  borderColor: "rgba(193,8,1,0.18)",
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: 18,
                 }}
               >
-                <Ionicons
-                  name="trash-outline"
-                  size={24}
-                  color={COLORS.red}
-                />
+                <Ionicons name="trash-outline" size={24} color={COLORS.red} />
               </View>
 
               <Text
@@ -1352,8 +1365,8 @@ export default function HistoryScreen() {
                   marginTop: 8,
                 }}
               >
-                Toutes tes séances enregistrées
-                seront supprimées définitivement.
+                Toutes tes séances enregistrées seront supprimées
+                définitivement.
               </Text>
 
               <View
@@ -1364,19 +1377,15 @@ export default function HistoryScreen() {
                 }}
               >
                 <TouchableOpacity
-                  onPress={() =>
-                    setShowClearConfirm(false)
-                  }
+                  onPress={() => setShowClearConfirm(false)}
                   activeOpacity={0.8}
                   style={{
                     flex: 1,
                     height: 50,
                     borderRadius: 16,
-                    backgroundColor:
-                      "rgba(255,255,255,0.05)",
+                    backgroundColor: "rgba(255,255,255,0.05)",
                     borderWidth: 1,
-                    borderColor:
-                      COLORS.border,
+                    borderColor: COLORS.border,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -1399,8 +1408,7 @@ export default function HistoryScreen() {
                     flex: 1,
                     height: 50,
                     borderRadius: 16,
-                    backgroundColor:
-                      COLORS.red,
+                    backgroundColor: COLORS.red,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -1457,19 +1465,10 @@ export default function HistoryScreen() {
  * ============================================================
  */
 
-function HistoryStat({
-  value,
-  label,
-  icon,
-  delay = 0,
-}) {
-  const statOpacity = useRef(
-    new Animated.Value(0)
-  ).current;
+function HistoryStat({ value, label, icon, delay = 0 }) {
+  const statOpacity = useRef(new Animated.Value(0)).current;
 
-  const statScale = useRef(
-    new Animated.Value(0.92)
-  ).current;
+  const statScale = useRef(new Animated.Value(0.92)).current;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1526,20 +1525,14 @@ function HistoryStat({
           width: 32,
           height: 32,
           borderRadius: 11,
-          backgroundColor:
-            "rgba(232,80,2,0.10)",
+          backgroundColor: "rgba(232,80,2,0.10)",
           borderWidth: 1,
-          borderColor:
-            "rgba(232,80,2,0.18)",
+          borderColor: "rgba(232,80,2,0.18)",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Ionicons
-          name={icon}
-          size={16}
-          color={COLORS.orange}
-        />
+        <Ionicons name={icon} size={16} color={COLORS.orange} />
       </View>
 
       <Text
@@ -1576,6 +1569,85 @@ function HistoryStat({
 
 /*
  * ============================================================
+ * MÉTRIQUE DU DÉTAIL
+ * ============================================================
+ */
+
+function WorkoutDetailMetric({ workout, formatDuration }) {
+  const metric = formatMetricValue(workout, formatDuration);
+
+  let icon = "repeat-outline";
+
+  if (metric.label === "km") {
+    icon = "navigate-outline";
+  }
+
+  if (metric.label === "durée") {
+    icon = "time-outline";
+  }
+
+  if (metric.label === "séries") {
+    icon = "layers-outline";
+  }
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: COLORS.black,
+        borderRadius: 19,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+      }}
+    >
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 11,
+          backgroundColor: "rgba(232,80,2,0.09)",
+          borderWidth: 1,
+          borderColor: "rgba(232,80,2,0.16)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} size={17} color={COLORS.orange} />
+      </View>
+
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.65}
+        style={{
+          color: COLORS.orange,
+          fontSize: 25,
+          fontWeight: "900",
+          marginTop: 12,
+          letterSpacing: -0.6,
+        }}
+      >
+        {metric.value}
+      </Text>
+
+      <Text
+        style={{
+          color: COLORS.gray,
+          fontSize: 9,
+          fontWeight: "800",
+          marginTop: 4,
+          letterSpacing: 0.8,
+        }}
+      >
+        {metric.label.toUpperCase()}
+      </Text>
+    </View>
+  );
+}
+
+/*
+ * ============================================================
  * CARTE DE SÉANCE
  * ============================================================
  */
@@ -1589,12 +1661,11 @@ function WorkoutCard({
   onDelete,
   animation,
 }) {
-  const pressScale = useRef(
-    new Animated.Value(1)
-  ).current;
+  const workoutType = getWorkoutType(workout.workoutId);
+  const workoutIcon = workoutType?.icon || "barbell-outline";
+  const pressScale = useRef(new Animated.Value(1)).current;
 
-  const repetitions =
-    Number(workout.repetitions) || 0;
+  const metric = formatMetricValue(workout, formatDuration);
 
   const handlePressIn = () => {
     Animated.spring(pressScale, {
@@ -1638,10 +1709,7 @@ function WorkoutCard({
             },
             {
               scale: animation
-                ? Animated.multiply(
-                    animation.scale,
-                    pressScale
-                  )
+                ? Animated.multiply(animation.scale, pressScale)
                 : pressScale,
             },
           ],
@@ -1661,20 +1729,14 @@ function WorkoutCard({
               width: 48,
               height: 48,
               borderRadius: 16,
-              backgroundColor:
-                "rgba(232,80,2,0.08)",
+              backgroundColor: "rgba(232,80,2,0.08)",
               borderWidth: 1,
-              borderColor:
-                "rgba(232,80,2,0.16)",
+              borderColor: "rgba(232,80,2,0.16)",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Ionicons
-              name="barbell-outline"
-              size={22}
-              color={COLORS.orange}
-            />
+            <Ionicons name={workoutIcon} size={32} color={COLORS.orange} />
           </View>
 
           <View
@@ -1716,10 +1778,13 @@ function WorkoutCard({
             style={{
               alignItems: "flex-end",
               marginLeft: 10,
+              maxWidth: 100,
             }}
           >
             <Text
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
               style={{
                 color: COLORS.orange,
                 fontSize: 18,
@@ -1727,12 +1792,11 @@ function WorkoutCard({
                 letterSpacing: -0.4,
               }}
             >
-              {repetitions.toLocaleString(
-                "fr-FR"
-              )}
+              {metric.value}
             </Text>
 
             <Text
+              numberOfLines={1}
               style={{
                 color: COLORS.gray,
                 fontSize: 9,
@@ -1742,7 +1806,7 @@ function WorkoutCard({
                 textTransform: "uppercase",
               }}
             >
-              Répétitions
+              {metric.label}
             </Text>
           </View>
         </View>
@@ -1757,7 +1821,7 @@ function WorkoutCard({
           }}
         />
 
-        {/* DURÉE */}
+        {/* INFORMATIONS SECONDAIRES */}
 
         <View
           style={{
@@ -1772,11 +1836,7 @@ function WorkoutCard({
               alignItems: "center",
             }}
           >
-            <Ionicons
-              name="time-outline"
-              size={15}
-              color={COLORS.gray}
-            />
+            <Ionicons name="time-outline" size={15} color={COLORS.gray} />
 
             <Text
               style={{
@@ -1799,9 +1859,36 @@ function WorkoutCard({
               fontWeight: "900",
             }}
           >
-            {formatDuration(workout.duration)}
+            {workout.duration != null ? formatDuration(workout.duration) : "—"}
           </Text>
         </View>
+
+        {/* STRUCTURE SETS */}
+
+        {getWorkoutMode(workout) === "sets" && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginTop: 10,
+            }}
+          >
+            <Ionicons name="layers-outline" size={15} color={COLORS.gray} />
+
+            <Text
+              style={{
+                color: COLORS.gray,
+                fontSize: 10,
+                fontWeight: "800",
+                marginLeft: 7,
+                letterSpacing: 0.4,
+              }}
+            >
+              {Number(workout.sets) || 0} séries ×{" "}
+              {Number(workout.repetitionsPerSet) || 0}
+            </Text>
+          </View>
+        )}
       </Animated.View>
     </TouchableOpacity>
   );

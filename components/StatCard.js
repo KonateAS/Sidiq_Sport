@@ -164,17 +164,17 @@ const accentAnimatedStyle = useAnimatedStyle(() => ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#0B0B0B",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-    width: "48%",
+  backgroundColor: "#0B0B0B",
+  borderRadius: 16,
+  padding: 10,
+  marginBottom: 12,
+  width: "100%",
 
-    borderWidth: 1,
-    borderColor: "#202020",
+  borderWidth: 1,
+  borderColor: "#202020",
 
-    minHeight: 128,
-  },
+  minHeight: 104,
+},
 
   header: {
     flexDirection: "row",
@@ -183,35 +183,36 @@ const styles = StyleSheet.create({
   },
 
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+  width: 32,
+  height: 32,
+  borderRadius: 11,
 
-    alignItems: "center",
-    justifyContent: "center",
+  alignItems: "center",
+  justifyContent: "center",
 
-    borderWidth: 1,
-  },
+  borderWidth: 1,
+},
 
-  label: {
-    color: "#777777",
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1.1,
-  },
+label: {
+  color: "#777777",
+  fontSize: 8,
+  fontWeight: "900",
+  letterSpacing: 0.7,
+  textAlign: "right",
+},
 
-  valueRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    marginTop: 15,
-  },
+valueRow: {
+  flexDirection: "row",
+  alignItems: "baseline",
+  marginTop: 11,
+},
 
-  value: {
-    color: "#F9F9F9",
-    fontSize: 30,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
+value: {
+  color: "#F9F9F9",
+  fontSize: 24,
+  fontWeight: "900",
+  letterSpacing: -0.8,
+},
 
   unit: {
     color: "#777777",

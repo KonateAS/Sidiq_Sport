@@ -2,7 +2,6 @@
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -11,16 +10,12 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getWorkoutHistory } from "../lib/workoutStorage";
 import { getPremiumStatus } from "../lib/premiumStorage";
+import { getProgression } from "../lib/progression";
 
 const USER_NAME_KEY = "sidiq-sport-user-name";
 
@@ -51,6 +46,7 @@ export default function ProfileScreen() {
   const [isPremium, setIsPremium] = useState(false);
 
   const [workoutHistory, setWorkoutHistory] = useState([]);
+
   const [workoutStats, setWorkoutStats] = useState({
     sessions: 0,
     repetitions: 0,
@@ -58,131 +54,97 @@ export default function ProfileScreen() {
     activeDays: 0,
   });
 
-    /*
-   * ============================================================
-   * ACTIVITÉ DES 7 DERNIERS JOURS
-   * ============================================================
-   */
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
   /*
    * ============================================================
-   * ACTIVITÉ DES 7 DERNIERS JOURS
+   * DATES
+   * ============================================================
+   */
+
+  const getLocalDateKey = (date) => {
+    const year = date.getFullYear();
+
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  /*
+   * ============================================================
+   * ACTIVITÉ HEBDOMADAIRE
+   * Compatible avec les modes :
+   * repetitions / duration / distance / sets
    * ============================================================
    */
 
   const weeklyData = useMemo(() => {
     const today = new Date();
 
-    const getLocalDateKey = (date) => {
-      const year = date.getFullYear();
-      const month = String(
-        date.getMonth() + 1
-      ).padStart(2, "0");
-      const day = String(
-        date.getDate()
-      ).padStart(2, "0");
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(today);
 
-      return `${year}-${month}-${day}`;
-    };
+      date.setHours(0, 0, 0, 0);
 
-    const days = Array.from(
-      { length: 7 },
-      (_, index) => {
-        const date = new Date(today);
+      date.setDate(today.getDate() - (6 - index));
 
-        date.setHours(
-          0,
-          0,
-          0,
-          0
-        );
-
-        date.setDate(
-          today.getDate() - (6 - index)
-        );
-
-        return date;
-      }
-    );
+      return date;
+    });
 
     const values = days.map((day) => {
-      const dayKey =
-        getLocalDateKey(day);
+      const dayKey = getLocalDateKey(day);
 
-      const repetitions =
-        workoutHistory
-          .filter((workout) => {
-            if (!workout.date) {
-              return false;
-            }
+      const dayWorkouts = workoutHistory.filter((workout) => {
+        if (!workout.date) {
+          return false;
+        }
 
-            const workoutDate =
-              new Date(workout.date);
+        const workoutDate = new Date(workout.date);
 
-            if (
-              Number.isNaN(
-                workoutDate.getTime()
-              )
-            ) {
-              return false;
-            }
+        if (Number.isNaN(workoutDate.getTime())) {
+          return false;
+        }
 
-            return (
-              getLocalDateKey(
-                workoutDate
-              ) === dayKey
-            );
-          })
-          .reduce(
-            (total, workout) =>
-              total +
-              (Number(
-                workout.repetitions
-              ) || 0),
-            0
-          );
+        return getLocalDateKey(workoutDate) === dayKey;
+      });
+
+      const sessions = dayWorkouts.length;
+
+      const repetitions = dayWorkouts.reduce(
+        (total, workout) => total + (Number(workout.repetitions) || 0),
+        0,
+      );
 
       return {
-        day: day.toLocaleDateString(
-          "fr-FR",
-          {
+        day: day
+          .toLocaleDateString("fr-FR", {
             weekday: "narrow",
-          }
-        ).toUpperCase(),
+          })
+          .toUpperCase(),
 
+        sessions,
         repetitions,
       };
     });
 
-    const maxRepetitions =
-      Math.max(
-        ...values.map(
-          (item) =>
-            item.repetitions
-        ),
-        1
-      );
+    const maxSessions = Math.max(...values.map((item) => item.sessions), 1);
 
-    return values.map(
-      (item) => ({
-        day: item.day,
+    return values.map((item) => ({
+      day: item.day,
 
-        value:
-          item.repetitions === 0
-            ? 4
-            : Math.max(
-                Math.round(
-                  (item.repetitions /
-                    maxRepetitions) *
-                    100
-                ),
-                8
-              ),
+      sessions: item.sessions,
 
-        repetitions:
-          item.repetitions,
-      })
-    );
+      repetitions: item.repetitions,
+
+      value:
+        item.sessions === 0
+          ? 4
+          : Math.max(Math.round((item.sessions / maxSessions) * 100), 8),
+    }));
   }, [workoutHistory]);
 
   /*
@@ -192,24 +154,14 @@ export default function ProfileScreen() {
    */
 
   const weeklySummary = useMemo(() => {
-    const activeDays =
-      weeklyData.filter(
-        (item) =>
-          item.repetitions > 0
-      ).length;
+    const activeDays = weeklyData.filter((item) => item.sessions > 0).length;
 
-    const totalRepetitions =
-      weeklyData.reduce(
-        (total, item) =>
-          total +
-          item.repetitions,
-        0
-      );
+    const totalRepetitions = weeklyData.reduce(
+      (total, item) => total + item.repetitions,
+      0,
+    );
 
-    const activityPercent =
-      Math.round(
-        (activeDays / 7) * 100
-      );
+    const activityPercent = Math.round((activeDays / 7) * 100);
 
     return {
       activeDays,
@@ -217,18 +169,22 @@ export default function ProfileScreen() {
       activityPercent,
     };
   }, [weeklyData]);
+
+  /*
+   * ============================================================
+   * FORMAT DU TEMPS ACTIF
+   * ============================================================
+   */
+
   const formatActiveDuration = (seconds) => {
     const totalSeconds = Number(seconds) || 0;
 
     const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor(
-      (totalSeconds % 3600) / 60
-    );
+
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
 
     if (hours > 0 && minutes > 0) {
-      return `${hours} h ${minutes
-        .toString()
-        .padStart(2, "0")}`;
+      return `${hours} h ${minutes.toString().padStart(2, "0")}`;
     }
 
     if (hours > 0) {
@@ -237,14 +193,92 @@ export default function ProfileScreen() {
 
     return `${minutes} min`;
   };
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.96)).current;
-
-  
 
   /*
    * ============================================================
    * CHARGEMENT DU NOM
+   * ============================================================
+   */
+
+  const loadUserName = async () => {
+    try {
+      const storedName = await AsyncStorage.getItem(USER_NAME_KEY);
+
+      if (storedName && storedName.trim()) {
+        const cleanName = storedName.trim();
+
+        setUserName(cleanName);
+        setDraftName(cleanName);
+      }
+    } catch (error) {
+      console.log("Impossible de récupérer le prénom :", error);
+    }
+  };
+
+  /*
+   * ============================================================
+   * CHARGEMENT DES DONNÉES DU PROFIL
+   * ============================================================
+   */
+
+  const loadProfileData = async () => {
+    try {
+      const history = await getWorkoutHistory();
+
+      setWorkoutHistory(Array.isArray(history) ? history : []);
+
+      const safeHistory = Array.isArray(history) ? history : [];
+
+      const sessions = safeHistory.length;
+
+      const repetitions = safeHistory.reduce(
+        (total, workout) => total + Number(workout.repetitions || 0),
+        0,
+      );
+
+      const duration = safeHistory.reduce(
+        (total, workout) => total + Number(workout.duration || 0),
+        0,
+      );
+
+      const uniqueDays = new Set();
+
+      safeHistory.forEach((workout) => {
+        if (!workout.date) {
+          return;
+        }
+
+        const workoutDate = new Date(workout.date);
+
+        if (Number.isNaN(workoutDate.getTime())) {
+          return;
+        }
+
+        uniqueDays.add(getLocalDateKey(workoutDate));
+      });
+
+      setWorkoutStats({
+        sessions,
+        repetitions,
+        duration,
+        activeDays: uniqueDays.size,
+      });
+    } catch (error) {
+      console.log("Impossible de charger l'historique :", error);
+    }
+
+    try {
+      const premium = await getPremiumStatus();
+
+      setIsPremium(Boolean(premium));
+    } catch (error) {
+      console.log("Impossible de charger le statut Premium :", error);
+    }
+  };
+
+  /*
+   * ============================================================
+   * CHARGEMENT INITIAL + ANIMATION
    * ============================================================
    */
 
@@ -267,89 +301,17 @@ export default function ProfileScreen() {
     ]).start();
   }, []);
 
-  const loadUserName = async () => {
-    try {
-      const storedName =
-        await AsyncStorage.getItem(USER_NAME_KEY);
-
-      if (storedName && storedName.trim()) {
-        const cleanName = storedName.trim();
-
-        setUserName(cleanName);
-        setDraftName(cleanName);
-      }
-    } catch (error) {
-      console.log(
-        "Impossible de récupérer le prénom :",
-        error
-      );
-    }
-  };
-
   /*
- * ============================================================
- * CHARGEMENT DE L'HISTORIQUE DES SÉANCES
- * ============================================================
- */
+   * ============================================================
+   * RECHARGEMENT DU PROFIL À CHAQUE RETOUR SUR L'ÉCRAN
+   * ============================================================
+   */
 
-useEffect(() => {
-  const loadWorkoutHistory = async () => {
-    try {
-      const history = await getWorkoutHistory();
-
-      setWorkoutHistory(history);
-
-      const sessions = history.length;
-
-      const repetitions = history.reduce(
-        (total, workout) =>
-          total + Number(workout.repetitions || 0),
-        0
-      );
-
-      const duration = history.reduce(
-        (total, workout) =>
-          total + Number(workout.duration || 0),
-        0
-      );
-
-      const uniqueDays = new Set(
-        history.map((workout) =>
-          new Date(workout.date).toISOString().split("T")[0]
-        )
-      );
-
-      setWorkoutStats({
-        sessions,
-        repetitions,
-        duration,
-        activeDays: uniqueDays.size,
-      });
-    } catch (error) {
-      console.log(
-        "Impossible de charger l'historique :",
-        error
-      );
-    }
-  };
-
-  loadWorkoutHistory();
-
-  const loadPremiumStatus = async () => {
-    try {
-      const premium = await getPremiumStatus();
-
-      setIsPremium(premium);
-    } catch (error) {
-      console.log(
-        "Impossible de charger le statut Premium :",
-        error
-      );
-    }
-  };
-
-  loadPremiumStatus();
-}, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData();
+    }, []),
+  );
 
   /*
    * ============================================================
@@ -367,19 +329,13 @@ useEffect(() => {
     }
 
     try {
-      await AsyncStorage.setItem(
-        USER_NAME_KEY,
-        cleanName
-      );
+      await AsyncStorage.setItem(USER_NAME_KEY, cleanName);
 
       setUserName(cleanName);
       setDraftName(cleanName);
       setEditing(false);
     } catch (error) {
-      console.log(
-        "Impossible de sauvegarder le prénom :",
-        error
-      );
+      console.log("Impossible de sauvegarder le prénom :", error);
     }
   };
 
@@ -389,14 +345,7 @@ useEffect(() => {
    * ============================================================
    */
 
-  const initial =
-    userName.charAt(0).toUpperCase() || "S";
-
-  /*
-   * ============================================================
-   * NIVEAU
-   * ============================================================
-   */
+  const initial = userName.charAt(0).toUpperCase() || "S";
 
   /*
    * ============================================================
@@ -404,58 +353,8 @@ useEffect(() => {
    * ============================================================
    */
 
-  const totalXP = workoutHistory.reduce(
-    (total, workout) => {
-      const repetitions = Number(
-        workout.repetitions || 0
-      );
-
-      const durationSeconds = Number(
-        workout.duration || 0
-      );
-
-      const durationMinutes = Math.floor(
-        durationSeconds / 60
-      );
-
-      return (
-        total +
-        repetitions +
-        durationMinutes * 2
-      );
-    },
-    0
-  );
-
-  const level = Math.floor(
-    totalXP / 1000
-  ) + 1;
-
- const levelNames = [
-  "DÉBUTANT",
-  "RÉGULIER",
-  "DISCIPLINÉ",
-  "ATHLÈTE",
-  "GUERRIER",
-  "VÉTÉRAN",
-  "ÉLITE",
-];
-
-  const levelName =
-    levelNames[
-      Math.min(
-        level - 1,
-        levelNames.length - 1
-      )
-    ];
-
-  const currentXP =
-    totalXP % 1000;
-
-  const nextXP = 1000;
-
-  const levelProgress =
-    currentXP / nextXP;
+  const { level, levelName, currentXP, nextXP, levelProgress } =
+    getProgression(workoutHistory);
 
   return (
     <KeyboardAvoidingView
@@ -463,11 +362,7 @@ useEffect(() => {
         flex: 1,
         backgroundColor: COLORS.background,
       }}
-      behavior={
-        Platform.OS === "ios"
-          ? "padding"
-          : undefined
-      }
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -502,26 +397,22 @@ useEffect(() => {
               justifyContent: "space-between",
             }}
           >
-            <TouchableOpacity
+            <PressableScale
               onPress={() => router.back()}
-              activeOpacity={0.7}
               style={{
-                width: 46,
-                height: 46,
-                borderRadius: 15,
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: 16,
+                paddingVertical: 9,
+                paddingHorizontal: 14,
+                borderRadius: 12,
                 backgroundColor: COLORS.card,
                 borderWidth: 1,
                 borderColor: COLORS.border,
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
-              <Ionicons
-                name="chevron-back"
-                size={23}
-                color={COLORS.text}
-              />
-            </TouchableOpacity>
+              <Ionicons name="chevron-back" size={23} color={COLORS.text} />
+            </PressableScale>
 
             <View
               style={{
@@ -577,17 +468,13 @@ useEffect(() => {
                 borderRadius: 34,
                 backgroundColor: "#111111",
                 borderWidth: 1,
-                borderColor:
-                  "rgba(232,80,2,0.30)",
+                borderColor: "rgba(232,80,2,0.30)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <LinearGradient
-                colors={[
-                  "rgba(232,80,2,0.18)",
-                  "rgba(193,8,1,0.05)",
-                ]}
+                colors={["rgba(232,80,2,0.18)", "rgba(193,8,1,0.05)"]}
                 style={{
                   position: "absolute",
                   left: 0,
@@ -622,14 +509,11 @@ useEffect(() => {
                   autoFocus
                   maxLength={24}
                   placeholder="Ton prénom"
-                  placeholderTextColor={
-                    COLORS.mutedDark
-                  }
+                  placeholderTextColor={COLORS.mutedDark}
                   style={{
                     backgroundColor: COLORS.card,
                     borderWidth: 1,
-                    borderColor:
-                      "rgba(232,80,2,0.35)",
+                    borderColor: "rgba(232,80,2,0.35)",
                     borderRadius: 16,
                     paddingHorizontal: 18,
                     paddingVertical: 15,
@@ -649,21 +533,18 @@ useEffect(() => {
                     marginTop: 10,
                   }}
                 >
-                  <TouchableOpacity
+                  <PressableScale
                     onPress={() => {
                       setDraftName(userName);
                       setEditing(false);
                     }}
-                    activeOpacity={0.7}
                     style={{
                       flex: 1,
                       paddingVertical: 13,
                       borderRadius: 14,
-                      backgroundColor:
-                        COLORS.cardSoft,
+                      backgroundColor: COLORS.cardSoft,
                       borderWidth: 1,
-                      borderColor:
-                        COLORS.border,
+                      borderColor: COLORS.border,
                       alignItems: "center",
                     }}
                   >
@@ -675,11 +556,10 @@ useEffect(() => {
                     >
                       Annuler
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
 
-                  <TouchableOpacity
+                  <PressableScale
                     onPress={saveName}
-                    activeOpacity={0.8}
                     style={{
                       flex: 1,
                       borderRadius: 14,
@@ -687,10 +567,7 @@ useEffect(() => {
                     }}
                   >
                     <LinearGradient
-                      colors={[
-                        COLORS.primary,
-                        COLORS.primaryDark,
-                      ]}
+                      colors={[COLORS.primary, COLORS.primaryDark]}
                       style={{
                         paddingVertical: 13,
                         alignItems: "center",
@@ -698,14 +575,14 @@ useEffect(() => {
                     >
                       <Text
                         style={{
-                          color: "#071009",
+                          color: "#000000",
                           fontWeight: "900",
                         }}
                       >
                         Enregistrer
                       </Text>
                     </LinearGradient>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
               </View>
             ) : (
@@ -731,12 +608,11 @@ useEffect(() => {
                   Membre SIDIQ SPORT
                 </Text>
 
-                <TouchableOpacity
+                <PressableScale
                   onPress={() => {
                     setDraftName(userName);
                     setEditing(true);
                   }}
-                  activeOpacity={0.7}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -765,7 +641,7 @@ useEffect(() => {
                   >
                     Modifier le prénom
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               </>
             )}
           </View>
@@ -781,10 +657,7 @@ useEffect(() => {
             }}
           >
             <LinearGradient
-              colors={[
-                "#1A0D08",
-                "#0D0B0A",
-              ]}
+              colors={["#1A0D08", "#0D0B0A"]}
               start={{
                 x: 0,
                 y: 0,
@@ -797,15 +670,13 @@ useEffect(() => {
                 borderRadius: 24,
                 padding: 22,
                 borderWidth: 1,
-                borderColor:
-                  "rgba(232,80,2,0.20)",
+                borderColor: "rgba(232,80,2,0.20)",
               }}
             >
               <View
                 style={{
                   flexDirection: "row",
-                  justifyContent:
-                    "space-between",
+                  justifyContent: "space-between",
                   alignItems: "center",
                 }}
               >
@@ -838,11 +709,9 @@ useEffect(() => {
                     width: 54,
                     height: 54,
                     borderRadius: 18,
-                    backgroundColor:
-                      "rgba(232,80,2,0.10)",
+                    backgroundColor: "rgba(232,80,2,0.10)",
                     borderWidth: 1,
-                    borderColor:
-                      "rgba(232,80,2,0.25)",
+                    borderColor: "rgba(232,80,2,0.25)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -871,11 +740,8 @@ useEffect(() => {
                 <View
                   style={{
                     height: "100%",
-                    width: `${
-                      levelProgress * 100
-                    }%`,
-                    backgroundColor:
-                      COLORS.primary,
+                    width: `${levelProgress * 100}%`,
+                    backgroundColor: COLORS.primary,
                     borderRadius: 999,
                   }}
                 />
@@ -884,8 +750,7 @@ useEffect(() => {
               <View
                 style={{
                   flexDirection: "row",
-                  justifyContent:
-                    "space-between",
+                  justifyContent: "space-between",
                   marginTop: 8,
                 }}
               >
@@ -948,16 +813,16 @@ useEffect(() => {
               }}
             >
               <StatBox
-  value={String(workoutStats.sessions)}
-  label="Séances"
-  icon="barbell-outline"
-/>
+                value={String(workoutStats.sessions)}
+                label="Séances"
+                icon="barbell-outline"
+              />
 
-<StatBox
-  value={workoutStats.repetitions.toLocaleString("fr-FR")}
-  label="Répétitions"
-  icon="repeat-outline"
-/>
+              <StatBox
+                value={workoutStats.repetitions.toLocaleString("fr-FR")}
+                label="Répétitions"
+                icon="repeat-outline"
+              />
             </View>
 
             <View
@@ -968,16 +833,16 @@ useEffect(() => {
               }}
             >
               <StatBox
-  value={formatActiveDuration(workoutStats.duration)}
-  label="Temps actif"
-  icon="time-outline"
-/>
+                value={formatActiveDuration(workoutStats.duration)}
+                label="Temps actif"
+                icon="time-outline"
+              />
 
-<StatBox
-  value={String(workoutStats.activeDays)}
-  label="Jours actifs"
-  icon="calendar-outline"
-/>
+              <StatBox
+                value={String(workoutStats.activeDays)}
+                label="Jours actifs"
+                icon="calendar-outline"
+              />
             </View>
           </View>
 
@@ -985,8 +850,7 @@ useEffect(() => {
               HISTORIQUE DES SÉANCES
           ================================================== */}
 
-          <TouchableOpacity
-            activeOpacity={0.85}
+          <PressableScale
             onPress={() => router.push("/history")}
             style={{
               marginHorizontal: 24,
@@ -1009,11 +873,9 @@ useEffect(() => {
                   width: 48,
                   height: 48,
                   borderRadius: 16,
-                  backgroundColor:
-                    "rgba(232,80,2,0.08)",
+                  backgroundColor: "rgba(232,80,2,0.08)",
                   borderWidth: 1,
-                  borderColor:
-                    "rgba(232,80,2,0.15)",
+                  borderColor: "rgba(232,80,2,0.15)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -1070,7 +932,8 @@ useEffect(() => {
                 />
               </View>
             </View>
-          </TouchableOpacity>
+          </PressableScale>
+
           {/* ==================================================
               ACTIVITÉ HEBDOMADAIRE
           ================================================== */}
@@ -1089,8 +952,7 @@ useEffect(() => {
             <View
               style={{
                 flexDirection: "row",
-                justifyContent:
-                  "space-between",
+                justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
@@ -1112,7 +974,7 @@ useEffect(() => {
                     marginTop: 4,
                   }}
                 >
-                Cette semaine
+                  Cette semaine
                 </Text>
               </View>
 
@@ -1134,14 +996,13 @@ useEffect(() => {
                 height: 150,
                 flexDirection: "row",
                 alignItems: "flex-end",
-                justifyContent:
-                  "space-between",
+                justifyContent: "space-between",
                 marginTop: 24,
               }}
             >
               {weeklyData.map((item, index) => (
                 <View
-                  key={index}
+                  key={`${item.day}-${index}`}
                   style={{
                     alignItems: "center",
                     flex: 1,
@@ -1151,10 +1012,8 @@ useEffect(() => {
                     style={{
                       width: 22,
                       height: 112,
-                      justifyContent:
-                        "flex-end",
-                      backgroundColor:
-                        "#161311",
+                      justifyContent: "flex-end",
+                      backgroundColor: "#161311",
                       borderRadius: 8,
                       overflow: "hidden",
                     }}
@@ -1164,9 +1023,7 @@ useEffect(() => {
                         width: "100%",
                         height: `${item.value}%`,
                         backgroundColor:
-                          index === 5
-                            ? COLORS.primary
-                            : "#4A2112",
+                          index === 6 ? COLORS.primary : "#4A2112",
                         borderRadius: 8,
                       }}
                     />
@@ -1174,10 +1031,7 @@ useEffect(() => {
 
                   <Text
                     style={{
-                      color:
-                        index === 5
-                          ? COLORS.primary
-                          : COLORS.muted,
+                      color: index === 6 ? COLORS.primary : COLORS.muted,
                       fontSize: 10,
                       fontWeight: "800",
                       marginTop: 8,
@@ -1189,12 +1043,12 @@ useEffect(() => {
               ))}
             </View>
           </View>
+
           {/* ==================================================
               PREMIUM
           ================================================== */}
 
-          <TouchableOpacity
-            activeOpacity={0.88}
+          <PressableScale
             onPress={() => router.push("/premium")}
             style={{
               marginHorizontal: 24,
@@ -1203,9 +1057,7 @@ useEffect(() => {
           >
             <LinearGradient
               colors={
-                isPremium
-                  ? ["#2A1208", "#0B0A09"]
-                  : ["#151515", "#0B0B0B"]
+                isPremium ? ["#2A1208", "#0B0A09"] : ["#151515", "#0B0B0B"]
               }
               start={{
                 x: 0,
@@ -1219,9 +1071,7 @@ useEffect(() => {
                 borderRadius: 24,
                 padding: 22,
                 borderWidth: 1,
-                borderColor: isPremium
-                  ? "rgba(232,80,2,0.30)"
-                  : COLORS.border,
+                borderColor: isPremium ? "rgba(232,80,2,0.30)" : COLORS.border,
               }}
             >
               <View
@@ -1244,17 +1094,9 @@ useEffect(() => {
                   }}
                 >
                   <Ionicons
-                    name={
-                      isPremium
-                        ? "diamond"
-                        : "diamond-outline"
-                    }
+                    name={isPremium ? "diamond" : "diamond-outline"}
                     size={23}
-                    color={
-                      isPremium
-                        ? COLORS.primary
-                        : COLORS.muted
-                    }
+                    color={isPremium ? COLORS.primary : COLORS.muted}
                   />
                 </View>
 
@@ -1265,17 +1107,13 @@ useEffect(() => {
                 >
                   <Text
                     style={{
-                      color: isPremium
-                        ? COLORS.primary
-                        : COLORS.text,
+                      color: isPremium ? COLORS.primary : COLORS.text,
                       fontSize: 11,
                       fontWeight: "900",
                       letterSpacing: 1.5,
                     }}
                   >
-                    {isPremium
-                      ? "SIDIQ SPORT PREMIUM"
-                      : "SIDIQ SPORT"}
+                    {isPremium ? "SIDIQ SPORT PREMIUM" : "SIDIQ SPORT"}
                   </Text>
 
                   <Text
@@ -1319,23 +1157,14 @@ useEffect(() => {
                   }}
                 >
                   <Ionicons
-                    name={
-                      isPremium
-                        ? "checkmark"
-                        : "chevron-forward"
-                    }
+                    name={isPremium ? "checkmark" : "chevron-forward"}
                     size={20}
-                    color={
-                      isPremium
-                        ? COLORS.primary
-                        : COLORS.text
-                    }
+                    color={isPremium ? COLORS.primary : COLORS.text}
                   />
                 </View>
               </View>
             </LinearGradient>
-          </TouchableOpacity>
-
+          </PressableScale>
 
           {/* ==================================================
               RÉGULARITÉ
@@ -1363,8 +1192,7 @@ useEffect(() => {
                   width: 48,
                   height: 48,
                   borderRadius: 16,
-                  backgroundColor:
-                    "rgba(232,80,2,0.08)",
+                  backgroundColor: "rgba(232,80,2,0.08)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -1400,9 +1228,8 @@ useEffect(() => {
                   }}
                 >
                   {weeklySummary.activeDays}{" "}
-{weeklySummary.activeDays > 1
-  ? "jours"
-  : "jour"} actifs cette semaine
+                  {weeklySummary.activeDays > 1 ? "jours" : "jour"} actifs cette
+                  semaine
                 </Text>
               </View>
 
@@ -1467,8 +1294,7 @@ useEffect(() => {
                   flex: 1,
                   height: 8,
                   borderRadius: 999,
-                  backgroundColor:
-                    "#181311",
+                  backgroundColor: "#181311",
                   overflow: "hidden",
                 }}
               >
@@ -1476,8 +1302,7 @@ useEffect(() => {
                   style={{
                     width: "72%",
                     height: "100%",
-                    backgroundColor:
-                      COLORS.primary,
+                    backgroundColor: COLORS.primary,
                     borderRadius: 999,
                   }}
                 />
@@ -1491,7 +1316,7 @@ useEffect(() => {
                   marginLeft: 12,
                 }}
               >
-                78 %
+                72 %
               </Text>
             </View>
           </View>
@@ -1538,8 +1363,7 @@ useEffect(() => {
           height: 82,
           backgroundColor: "#0B0B0B",
           borderTopWidth: 1,
-          borderTopColor:
-            "rgba(255,255,255,0.06)",
+          borderTopColor: "rgba(255,255,255,0.06)",
           flexDirection: "row",
           justifyContent: "space-around",
           alignItems: "center",
@@ -1552,25 +1376,15 @@ useEffect(() => {
           onPress={() => router.replace("/")}
         />
 
-        <BottomTab
-          icon="stats-chart-outline"
-          label="Activité"
-          active
-        />
+        <BottomTab icon="stats-chart-outline" label="Activité" />
 
         <BottomTab
           icon="barbell-outline"
           label="Séances"
-          onPress={() =>
-            router.push("/workout")
-          }
+          onPress={() => router.push("/sessions")}
         />
 
-        <BottomTab
-          icon="person"
-          label="Profil"
-          active
-        />
+        <BottomTab icon="person" label="Profil" active />
       </View>
     </KeyboardAvoidingView>
   );
@@ -1582,11 +1396,7 @@ useEffect(() => {
  * ============================================================
  */
 
-function StatBox({
-  value,
-  label,
-  icon,
-}) {
+function StatBox({ value, label, icon }) {
   return (
     <View
       style={{
@@ -1598,11 +1408,7 @@ function StatBox({
         borderColor: COLORS.border,
       }}
     >
-      <Ionicons
-        name={icon}
-        size={19}
-        color={COLORS.primary}
-      />
+      <Ionicons name={icon} size={19} color={COLORS.primary} />
 
       <Text
         style={{
@@ -1634,16 +1440,10 @@ function StatBox({
  * ============================================================
  */
 
-function BottomTab({
-  icon,
-  label,
-  active = false,
-  onPress,
-}) {
+function BottomTab({ icon, label, active = false, onPress }) {
   return (
-    <TouchableOpacity
+    <PressableScale
       onPress={onPress}
-      activeOpacity={0.7}
       style={{
         alignItems: "center",
         justifyContent: "center",
@@ -1653,40 +1453,19 @@ function BottomTab({
       <Ionicons
         name={icon}
         size={22}
-        color={
-          active
-            ? COLORS.primary
-            : COLORS.muted
-        }
+        color={active ? COLORS.primary : COLORS.muted}
       />
 
       <Text
         style={{
-          color: active
-            ? COLORS.primary
-            : COLORS.muted,
+          color: active ? COLORS.primary : COLORS.muted,
           fontSize: 10,
-          fontWeight: active
-            ? "800"
-            : "600",
+          fontWeight: active ? "800" : "600",
           marginTop: 5,
         }}
       >
         {label}
       </Text>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

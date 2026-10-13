@@ -15,11 +15,31 @@ import Svg, { Circle } from "react-native-svg";
 
 import { saveWorkout } from "../lib/workoutStorage";
 import { getPremiumStatus } from "../lib/premiumStorage";
-import {
-  getWorkoutType,
-} from "../lib/workoutTypes";
+import { getWorkoutType } from "../lib/workoutTypes";
+import FadeInView from "../components/FadeInView";
 
 const { width } = Dimensions.get("window");
+
+const COLORS = {
+  black: "#000000",
+  surface: "#0B0B0B",
+  surfaceLight: "#111111",
+  border: "#242424",
+  controlBorder: "#222222",
+  orange: "#E85002",
+  red: "#C10801",
+  white: "#FFFFFF",
+  lightGray: "#A7A7A7",
+  gray: "#646464",
+  muted: "#8E8E93",
+  darkMuted: "#777777",
+  darkerMuted: "#686868",
+  darkestMuted: "#444444",
+  ringTrack: "#171717",
+  gradientTop: "#090909",
+  gradientMiddle: "#050505",
+  completedBackground: "#070707",
+};
 
 // Le target dépend maintenant de l'activité sélectionnée.
 
@@ -27,26 +47,20 @@ const RING_SIZE = Math.min(width - 72, 310);
 
 const STROKE_WIDTH = 12;
 
-const RADIUS =
-  (RING_SIZE - STROKE_WIDTH) / 2;
+const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 
-const CIRCUMFERENCE =
-  2 * Math.PI * RADIUS;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-const AnimatedCircle =
-  Animated.createAnimatedComponent(Circle);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function WorkoutScreen() {
   const router = useRouter();
 
   const { workoutId } = useLocalSearchParams();
 
-  const workout = getWorkoutType(
-    workoutId || "squats"
-  );
+  const workout = workoutId ? getWorkoutType(workoutId) : null;
 
-  const TARGET =
-    workout.target ?? 0;
+  const TARGET = workout?.target ?? 0;
 
   /*
    * ============================================================
@@ -57,17 +71,18 @@ export default function WorkoutScreen() {
   const [count, setCount] = useState(0);
 
   const [timer, setTimer] = useState(0);
+  const [restTimer, setRestTimer] = useState(0);
 
-  const [isActive, setIsActive] = useState(true);
+  const [sessionStatus, setSessionStatus] = useState("preparation");
 
-  const [isCompleted, setIsCompleted] =
-    useState(false);
+  const [currentSet, setCurrentSet] = useState(1);
+  const [setReps, setSetReps] = useState(0);
 
-  const [isPremium, setIsPremium] =
-    useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
-  const [premiumChecked, setPremiumChecked] =
-    useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+
+  const [premiumChecked, setPremiumChecked] = useState(false);
 
   /*
    * ============================================================
@@ -89,10 +104,7 @@ export default function WorkoutScreen() {
         setIsPremium(status);
         setPremiumChecked(true);
       } catch (error) {
-        console.log(
-          "Erreur lors de la vérification Premium :",
-          error
-        );
+        console.log("Erreur lors de la vérification Premium :", error);
 
         if (!mounted) {
           return;
@@ -124,29 +136,26 @@ export default function WorkoutScreen() {
     router.replace("/premium");
   }, [premiumChecked, isPremium, router]);
 
-/*
+  /*
    * ============================================================
    * ANIMATIONS
    * ============================================================
    */
 
-  const progressAnim =
-    useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const scaleAnim =
-    useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const contentOpacity =
-    useRef(new Animated.Value(1)).current;
-
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const completionLock = useRef(false);
   /*
    * ============================================================
-   * VÉRIFICATION PREMIUM
+   * CHRONOMÈTRE AUTOMATIQUE DE LA SÉANCE
    * ============================================================
    */
 
   useEffect(() => {
-    if (!isActive || isCompleted) {
+    if (!workout || sessionStatus !== "active" || isCompleted) {
       return;
     }
 
@@ -154,21 +163,26 @@ export default function WorkoutScreen() {
       setTimer((previous) => {
         const nextTimer = previous + 1;
 
-        if (
-          workout.mode === "duration" &&
-          nextTimer >= TARGET
-        ) {
-          setIsActive(false);
+        if (workout.mode === "duration" && nextTimer >= TARGET) {
+          setSessionStatus("completed");
 
           setTimeout(async () => {
             await Haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Success
+              Haptics.NotificationFeedbackType.Success,
             );
+
+            if (completionLock.current) {
+              return;
+            }
+
+            completionLock.current = true;
 
             await saveWorkout({
               repetitions: null,
               distance: null,
               duration: TARGET,
+              sets: null,
+              repetitionsPerSet: null,
               type: workout.name,
               workoutId: workout.id,
               category: workout.category,
@@ -189,15 +203,48 @@ export default function WorkoutScreen() {
       clearInterval(interval);
     };
   }, [
-    isActive,
+    sessionStatus,
     isCompleted,
-    workout.mode,
-    workout.name,
-    workout.id,
-    workout.category,
-    workout.unit,
+    workout?.mode,
+    workout?.name,
+    workout?.id,
+    workout?.category,
+    workout?.unit,
     TARGET,
   ]);
+
+  /*
+   * ============================================================
+   * CHRONOMÈTRE DE REPOS ENTRE LES SÉRIES
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (sessionStatus !== "resting" || isCompleted) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setRestTimer((previous) => {
+        if (previous <= 1) {
+          clearInterval(interval);
+
+          setCurrentSet((previousSet) => previousSet + 1);
+          setSetReps(0);
+          setSessionStatus("active");
+
+          return 0;
+        }
+
+        return previous - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [sessionStatus, isCompleted]);
+
   /*
    * ============================================================
    * PROGRESSION DE L'ANNEAU
@@ -205,24 +252,30 @@ export default function WorkoutScreen() {
    */
 
   useEffect(() => {
+    if (!workout) {
+      return;
+    }
+
     let progress = 0;
 
-    if (
-      workout.mode === "repetitions" ||
-      workout.mode === "distance" ||
-      workout.mode === "sets"
-    ) {
-      progress =
-        TARGET > 0
-          ? count / TARGET
-          : 0;
+    if (workout.mode === "repetitions" || workout.mode === "distance") {
+      progress = TARGET > 0 ? count / TARGET : 0;
+    }
+
+    if (workout.mode === "sets") {
+      const totalSets = workout.sets ?? 0;
+      const targetReps = workout.reps ?? 0;
+
+      if (totalSets > 0 && targetReps > 0) {
+        const completedSets = currentSet - 1;
+        const currentSetProgress = setReps / targetReps;
+
+        progress = (completedSets + currentSetProgress) / totalSets;
+      }
     }
 
     if (workout.mode === "duration") {
-      progress =
-        TARGET > 0
-          ? timer / TARGET
-          : 0;
+      progress = TARGET > 0 ? timer / TARGET : 0;
     }
 
     progress = Math.min(progress, 1);
@@ -235,10 +288,15 @@ export default function WorkoutScreen() {
   }, [
     count,
     timer,
+    currentSet,
+    setReps,
     TARGET,
-    workout.mode,
+    workout?.mode,
+    workout?.sets,
+    workout?.reps,
     progressAnim,
   ]);
+
   /*
    * ============================================================
    * ANIMATION DU COMPTEUR
@@ -269,20 +327,15 @@ export default function WorkoutScreen() {
    */
 
   const formatTime = (seconds) => {
-    const minutes = Math.floor(
-      seconds / 60
-    );
+    const minutes = Math.floor(seconds / 60);
 
-    const remainingSeconds =
-      seconds % 60;
+    const remainingSeconds = seconds % 60;
 
-    return `${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(
-      remainingSeconds
+    return `${String(minutes).padStart(2, "0")}:${String(
+      remainingSeconds,
     ).padStart(2, "0")}`;
   };
+
   /*
    * ============================================================
    * AJOUTER UNE RÉPÉTITION
@@ -290,7 +343,7 @@ export default function WorkoutScreen() {
    */
 
   const handleIncrement = async () => {
-    if (isCompleted) {
+    if (isCompleted || sessionStatus === "completed") {
       return;
     }
 
@@ -305,42 +358,165 @@ export default function WorkoutScreen() {
       return;
     }
 
-    let step = 1;
+    /*
+     * ----------------------------------------------------------
+     * ACTIVITÉS EN SÉRIES
+     * ----------------------------------------------------------
+     */
+
+    if (workout.mode === "sets") {
+      const targetReps = workout.reps ?? 0;
+      const totalSets = workout.sets ?? 0;
+
+      if (setReps >= targetReps) {
+        return;
+      }
+
+      const nextSetReps = setReps + 1;
+
+      setSetReps(nextSetReps);
+
+      animateCounter();
+
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      if (nextSetReps >= targetReps) {
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
+
+        if (currentSet < totalSets) {
+          setRestTimer(workout.rest ?? 60);
+          setSessionStatus("resting");
+        } else {
+          setSessionStatus("completed");
+          setIsCompleted(true);
+
+          if (completionLock.current) {
+            return;
+          }
+
+          completionLock.current = true;
+
+          await saveWorkout({
+            repetitions: totalSets * targetReps,
+            distance: null,
+            duration: null,
+            type: workout.name,
+            workoutId: workout.id,
+            category: workout.category,
+            unit: workout.unit,
+            sets: totalSets,
+            repetitionsPerSet: targetReps,
+          });
+        }
+      }
+
+      return;
+    }
 
     /*
      * ----------------------------------------------------------
-     * VALEUR AJOUTÉE SELON LE TYPE D'ACTIVITÉ
+     * MOTEUR REP AVEC SÉRIES
      * ----------------------------------------------------------
      */
+
+    if (workout.mode === "repetitions" && workout.structure === "sets_reps") {
+      const repsPerSet = workout.reps ?? TARGET;
+      const totalSets = Math.ceil(TARGET / repsPerSet);
+
+      if (setReps >= repsPerSet) {
+        return;
+      }
+
+      const nextSetReps = setReps + 1;
+      const nextCount = Math.min(count + 1, TARGET);
+
+      setSetReps(nextSetReps);
+      setCount(nextCount);
+
+      animateCounter();
+
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      /*
+       * Objectif total atteint
+       */
+
+      if (nextCount >= TARGET) {
+        setCount(TARGET);
+        setSessionStatus("completed");
+
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
+
+        if (completionLock.current) {
+          return;
+        }
+
+        completionLock.current = true;
+
+        await saveWorkout({
+          repetitions: TARGET,
+          distance: null,
+          duration: null,
+          sets: totalSets,
+          repetitionsPerSet: repsPerSet,
+          type: workout.name,
+          workoutId: workout.id,
+          category: workout.category,
+          unit: workout.unit,
+        });
+
+        setTimeout(() => {
+          finishWorkout();
+        }, 500);
+
+        return;
+      }
+
+      /*
+       * Fin de série → repos
+       */
+
+      if (nextSetReps >= repsPerSet) {
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
+
+        if (currentSet < totalSets) {
+          setRestTimer(workout.rest ?? 60);
+          setSessionStatus("resting");
+        }
+      }
+
+      return;
+    }
+
+    /*
+     * ----------------------------------------------------------
+     * REP SIMPLE
+     * Activités sans structure de séries.
+     * ----------------------------------------------------------
+     */
+
+    let step = 1;
 
     if (workout.mode === "distance") {
       step = 0.1;
     }
 
-    const nextCount = Math.min(
-      count + step,
-      TARGET
-    );
+    const nextCount = Math.min(count + step, TARGET);
 
     setCount(nextCount);
 
     animateCounter();
 
-    await Haptics.impactAsync(
-      Haptics.ImpactFeedbackStyle.Light
-    );
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    /*
-     * ----------------------------------------------------------
-     * FEEDBACK INTERMÉDIAIRE
-     * ----------------------------------------------------------
-     */
-
-    const isRepetition =
-      workout.mode === "repetitions";
-
-    const isDistance =
-      workout.mode === "distance";
+    const isRepetition = workout.mode === "repetitions";
+    const isDistance = workout.mode === "distance";
 
     if (
       isRepetition &&
@@ -348,9 +524,7 @@ export default function WorkoutScreen() {
       nextCount % 25 === 0 &&
       nextCount < TARGET
     ) {
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
     if (
@@ -359,35 +533,23 @@ export default function WorkoutScreen() {
       Number.isInteger(nextCount) &&
       nextCount < TARGET
     ) {
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-
-    /*
-     * ----------------------------------------------------------
-     * OBJECTIF ATTEINT
-     * ----------------------------------------------------------
-     */
 
     if (nextCount >= TARGET) {
       setCount(TARGET);
-      setIsActive(false);
+      setSessionStatus("completed");
 
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (completionLock.current) {
+        return;
+      }
 
+      completionLock.current = true;
       await saveWorkout({
-        repetitions:
-          workout.mode === "repetitions"
-            ? TARGET
-            : null,
+        repetitions: workout.mode === "repetitions" ? TARGET : null,
 
-        distance:
-          workout.mode === "distance"
-            ? TARGET
-            : null,
+        distance: workout.mode === "distance" ? TARGET : null,
 
         duration: null,
 
@@ -401,28 +563,53 @@ export default function WorkoutScreen() {
         finishWorkout();
       }, 500);
     }
-  };  /*
+  };
+
+  /*
    * ============================================================
    * RETIRER UNE RÉPÉTITION
    * ============================================================
    */
 
   const handleDecrement = async () => {
-    if (
-      isCompleted ||
-      count <= 0
-    ) {
+    if (isCompleted || sessionStatus === "completed") {
       return;
     }
 
-    setCount(
-      (previous) =>
-        Math.max(previous - 1, 0)
-    );
+    if (workout.mode === "repetitions" && workout.structure === "sets_reps") {
+      if (setReps <= 0 || count <= 0) {
+        return;
+      }
 
-    await Haptics.impactAsync(
-      Haptics.ImpactFeedbackStyle.Light
-    );
+      setSetReps((previous) => Math.max(previous - 1, 0));
+      setCount((previous) => Math.max(previous - 1, 0));
+
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      return;
+    }
+
+    if (workout.mode === "sets") {
+      if (setReps <= 0) {
+        return;
+      }
+
+      setSetReps((previous) => Math.max(previous - 1, 0));
+
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      return;
+    }
+
+    if (count <= 0) {
+      return;
+    }
+
+    const step = workout.mode === "distance" ? 0.1 : 1;
+
+    setCount((previous) => Math.max(previous - step, 0));
+
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   /*
@@ -432,13 +619,25 @@ export default function WorkoutScreen() {
    */
 
   const handleTogglePause = () => {
-    if (isCompleted) {
+    if (isCompleted || sessionStatus === "completed") {
       return;
     }
 
-    setIsActive(
-      (previous) => !previous
-    );
+    setSessionStatus((previous) => {
+      if (previous === "preparation") {
+        return "active";
+      }
+
+      if (previous === "active") {
+        return "paused";
+      }
+
+      if (previous === "paused") {
+        return "active";
+      }
+
+      return previous;
+    });
   };
 
   /*
@@ -448,7 +647,7 @@ export default function WorkoutScreen() {
    */
 
   const finishWorkout = () => {
-    setIsActive(false);
+    setSessionStatus("completed");
 
     Animated.timing(contentOpacity, {
       toValue: 0,
@@ -474,8 +673,12 @@ export default function WorkoutScreen() {
   const restartWorkout = () => {
     setCount(0);
     setTimer(0);
+    setCurrentSet(1);
+    setSetReps(0);
+    setRestTimer(0);
     setIsCompleted(false);
-    setIsActive(true);
+    completionLock.current = false;
+    setSessionStatus("preparation");
 
     progressAnim.setValue(0);
     scaleAnim.setValue(1);
@@ -488,57 +691,107 @@ export default function WorkoutScreen() {
    * ============================================================
    */
 
-  const strokeDashoffset =
-    progressAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [
-        CIRCUMFERENCE,
-        0,
-      ],
-    });
-
-  const percentage = Math.round(
-    (
-      workout.mode === "duration"
-        ? timer / TARGET
-        : count / TARGET
-    ) * 100
-  );
+  const strokeDashoffset = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CIRCUMFERENCE, 0],
+  });
 
   const displayValue =
-    workout.mode === "duration"
+    workout?.mode === "duration"
       ? formatTime(timer)
-      : count;
+      : workout?.mode === "sets" ||
+          (workout?.mode === "repetitions" &&
+            workout?.structure === "sets_reps")
+        ? setReps
+        : count;
 
   const displayTarget =
-    workout.mode === "duration"
-      ? formatTime(TARGET)
-      : TARGET;
+    workout?.mode === "duration"
+      ? `${Math.floor(TARGET / 60)} min`
+      : workout?.mode === "sets" ||
+          (workout?.mode === "repetitions" &&
+            workout?.structure === "sets_reps")
+        ? (workout?.reps ?? 0)
+        : TARGET;
+
   /*
    * ============================================================
-   * VÉRIFICATION PREMIUM EN COURS
+   * VÉRIFICATION DE LA SÉANCE
    * ============================================================
    */
+
+  if (!workout) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: COLORS.surface,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        <Text
+          style={{
+            color: COLORS.white,
+            fontSize: 20,
+            fontWeight: "700",
+            textAlign: "center",
+          }}
+        >
+          Séance introuvable
+        </Text>
+
+        <Text
+          style={{
+            color: COLORS.gray,
+            fontSize: 14,
+            textAlign: "center",
+            marginTop: 10,
+          }}
+        >
+          Cette séance n'existe pas ou n'est plus disponible.
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => router.replace("/sessions")}
+          style={{
+            marginTop: 24,
+            paddingHorizontal: 24,
+            paddingVertical: 14,
+            borderRadius: 12,
+            backgroundColor: COLORS.orange,
+          }}
+        >
+          <Text
+            style={{
+              color: COLORS.white,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          >
+            RETOUR AUX SÉANCES
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (!premiumChecked) {
     return (
       <View
         style={{
           flex: 1,
-          backgroundColor: "#0B0B0B",
+          backgroundColor: COLORS.surface,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Ionicons
-          name="diamond-outline"
-          size={28}
-          color="#E85002"
-        />
+        <Ionicons name="diamond-outline" size={28} color={COLORS.orange} />
 
         <Text
           style={{
-            color: "#A7A7A7",
+            color: COLORS.lightGray,
             fontSize: 12,
             fontWeight: "700",
             marginTop: 12,
@@ -556,7 +809,6 @@ export default function WorkoutScreen() {
    * ============================================================
    */
 
-
   /*
    * ============================================================
    * ÉCRAN DE FIN
@@ -568,7 +820,7 @@ export default function WorkoutScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#070707",
+          backgroundColor: COLORS.completedBackground,
           justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: 24,
@@ -576,7 +828,7 @@ export default function WorkoutScreen() {
       >
         <Text
           style={{
-            color: "#FFFFFF",
+            color: COLORS.white,
             fontSize: 32,
             fontWeight: "800",
             letterSpacing: -1,
@@ -588,7 +840,7 @@ export default function WorkoutScreen() {
 
         <Text
           style={{
-            color: "#8E8E93",
+            color: COLORS.muted,
             fontSize: 16,
             marginBottom: 40,
           }}
@@ -600,7 +852,7 @@ export default function WorkoutScreen() {
           style={{
             width: "100%",
             maxWidth: 340,
-            backgroundColor: "#111111",
+            backgroundColor: COLORS.surfaceLight,
             borderRadius: 24,
             padding: 24,
             marginBottom: 28,
@@ -615,7 +867,7 @@ export default function WorkoutScreen() {
           >
             <Text
               style={{
-                color: "#8E8E93",
+                color: COLORS.muted,
                 fontSize: 15,
               }}
             >
@@ -630,12 +882,19 @@ export default function WorkoutScreen() {
 
             <Text
               style={{
-                color: "#FFFFFF",
+                color: COLORS.white,
                 fontSize: 18,
                 fontWeight: "700",
               }}
             >
-              {displayValue} / {displayTarget} {workout.unit}
+              {workout.mode === "sets"
+                ? `${workout.sets ?? 0} séries × ${workout.reps ?? displayTarget} répétitions`
+                : workout.mode === "repetitions" &&
+                    workout.structure === "sets_reps"
+                  ? `${Math.ceil(TARGET / (workout.reps ?? TARGET))} séries × ${
+                      workout.reps ?? displayTarget
+                    } répétitions`
+                  : `${displayValue} / ${displayTarget} ${workout.unit}`}
             </Text>
           </View>
 
@@ -647,7 +906,7 @@ export default function WorkoutScreen() {
           >
             <Text
               style={{
-                color: "#8E8E93",
+                color: COLORS.muted,
                 fontSize: 15,
               }}
             >
@@ -656,7 +915,7 @@ export default function WorkoutScreen() {
 
             <Text
               style={{
-                color: "#FFFFFF",
+                color: COLORS.white,
                 fontSize: 18,
                 fontWeight: "700",
               }}
@@ -674,7 +933,7 @@ export default function WorkoutScreen() {
             maxWidth: 340,
             height: 56,
             borderRadius: 18,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: COLORS.white,
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 12,
@@ -682,7 +941,7 @@ export default function WorkoutScreen() {
         >
           <Text
             style={{
-              color: "#000000",
+              color: COLORS.black,
               fontSize: 16,
               fontWeight: "800",
             }}
@@ -700,14 +959,14 @@ export default function WorkoutScreen() {
             height: 56,
             borderRadius: 18,
             borderWidth: 1,
-            borderColor: "#2A2A2A",
+            borderColor: COLORS.border,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           <Text
             style={{
-              color: "#FFFFFF",
+              color: COLORS.white,
               fontSize: 16,
               fontWeight: "700",
             }}
@@ -726,405 +985,398 @@ export default function WorkoutScreen() {
    */
 
   return (
-    <LinearGradient
-      colors={[
-        "#090909",
-        "#050505",
-        "#000000",
-      ]}
+    <FadeInView
+      duration={450}
+      translateY={12}
+      scale={0.99}
       style={{
         flex: 1,
       }}
     >
-      <Animated.View
+      <LinearGradient
+        colors={[COLORS.gradientTop, COLORS.gradientMiddle, COLORS.black]}
         style={{
           flex: 1,
-          opacity: contentOpacity,
         }}
       >
-        {/* =====================================================
-            HEADER
-            ===================================================== */}
-
-        <View
+        <Animated.View
           style={{
-            paddingTop: 58,
-            paddingHorizontal: 22,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
+            flex: 1,
+            opacity: contentOpacity,
           }}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            activeOpacity={0.7}
+          {/* =====================================================
+              HEADER
+              ===================================================== */}
+
+          <View
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: "#111111",
+              paddingTop: 58,
+              paddingHorizontal: 22,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
+              justifyContent: "space-between",
             }}
           >
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color="#FFFFFF"
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: COLORS.surfaceLight,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="chevron-back" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+
+            <View
+              style={{
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: COLORS.white,
+                  fontSize: 17,
+                  fontWeight: "800",
+                  letterSpacing: 1.5,
+                }}
+              >
+                SIDIQ SPORT
+              </Text>
+
+              <Text
+                style={{
+                  color: COLORS.gray,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                  marginTop: 4,
+                  textTransform: "uppercase",
+                }}
+              >
+                Séance
+              </Text>
+            </View>
+
+            <View
+              style={{
+                width: 44,
+                height: 44,
+              }}
             />
-          </TouchableOpacity>
+          </View>
+
+          {/* =====================================================
+              CHRONOMÈTRE
+              ===================================================== */}
 
           <View
             style={{
               alignItems: "center",
+              marginTop: 28,
             }}
           >
             <Text
               style={{
-                color: "#FFFFFF",
-                fontSize: 17,
-                fontWeight: "800",
-                letterSpacing: 1.5,
-              }}
-            >
-              SIDIQ SPORT
-            </Text>
-
-            <Text
-              style={{
-                color: "#666666",
-                fontSize: 11,
-                letterSpacing: 1.2,
-                marginTop: 4,
+                color: COLORS.darkMuted,
+                fontSize: 12,
+                fontWeight: "600",
+                letterSpacing: 2,
                 textTransform: "uppercase",
               }}
             >
-              Séance
+              Durée
+            </Text>
+
+            <Text
+              style={{
+                color: COLORS.white,
+                fontSize: 25,
+                fontWeight: "700",
+                letterSpacing: 1,
+                marginTop: 5,
+              }}
+            >
+              {formatTime(timer)}
             </Text>
           </View>
 
+          {/* =====================================================
+              ANNEAU DE PROGRESSION
+              ===================================================== */}
+
           <View
             style={{
-              width: 44,
-              height: 44,
-            }}
-          />
-        </View>
-
-        {/* =====================================================
-            CHRONOMÈTRE
-            ===================================================== */}
-
-        <View
-          style={{
-            alignItems: "center",
-            marginTop: 28,
-          }}
-        >
-          <Text
-            style={{
-              color: "#777777",
-              fontSize: 12,
-              fontWeight: "600",
-              letterSpacing: 2,
-              textTransform: "uppercase",
-            }}
-          >
-            Durée
-          </Text>
-
-          <Text
-            style={{
-              color: "#FFFFFF",
-              fontSize: 25,
-              fontWeight: "700",
-              letterSpacing: 1,
-              marginTop: 5,
-            }}
-          >
-            {formatTime(timer)}
-          </Text>
-        </View>
-
-        {/* =====================================================
-            ANNEAU DE PROGRESSION
-            ===================================================== */}
-
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 20,
-          }}
-        >
-          <Svg
-            width={RING_SIZE}
-            height={RING_SIZE}
-            viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-          >
-            {/* Anneau de fond */}
-
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RADIUS}
-              stroke="#171717"
-              strokeWidth={STROKE_WIDTH}
-              fill="none"
-            />
-
-            {/* Anneau dynamique */}
-
-            <AnimatedCircle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RADIUS}
-              stroke="#FFFFFF"
-              strokeWidth={STROKE_WIDTH}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-              strokeDashoffset={strokeDashoffset}
-              rotation="-90"
-              origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
-            />
-          </Svg>
-
-          {/* ===================================================
-              COMPTEUR CENTRAL
-              =================================================== */}
-
-          <Animated.View
-            style={{
-              position: "absolute",
               alignItems: "center",
               justifyContent: "center",
-              transform: [
-                {
-                  scale: scaleAnim,
-                },
-              ],
+              marginTop: 20,
             }}
           >
-            <Text
+            <Svg
+              width={RING_SIZE}
+              height={RING_SIZE}
+              viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+            >
+              <Circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RADIUS}
+                stroke={COLORS.ringTrack}
+                strokeWidth={STROKE_WIDTH}
+                fill="none"
+              />
+
+              <AnimatedCircle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RADIUS}
+                stroke={COLORS.white}
+                strokeWidth={STROKE_WIDTH}
+                strokeLinecap="round"
+                fill="none"
+                strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                strokeDashoffset={strokeDashoffset}
+                rotation="-90"
+                origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
+              />
+            </Svg>
+
+            {/* ===================================================
+                COMPTEUR CENTRAL
+                =================================================== */}
+
+            <Animated.View
               style={{
-                color: "#FFFFFF",
-                fontSize: 68,
-                fontWeight: "800",
-                letterSpacing: -3,
+                position: "absolute",
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [
+                  {
+                    scale: scaleAnim,
+                  },
+                ],
               }}
             >
-              {displayValue}
-            </Text>
+              <Text
+                style={{
+                  color: COLORS.white,
+                  fontSize: workout.mode === "distance" ? 56 : 68,
+                  fontWeight: "800",
+                  letterSpacing: -3,
+                  minWidth: 150,
+                  textAlign: "center",
+                }}
+              >
+                {sessionStatus === "resting"
+                  ? formatTime(restTimer)
+                  : workout.mode === "distance"
+                    ? Number(displayValue).toFixed(1)
+                    : displayValue}
+              </Text>
 
-            <Text
-              style={{
-                color: "#686868",
-                fontSize: 14,
-                fontWeight: "600",
-                letterSpacing: 2,
-                marginTop: -4,
-              }}
-            >
-              / {displayTarget} {workout.unit}
-            </Text>
+              <Text
+                style={{
+                  color: COLORS.darkerMuted,
+                  fontSize: 14,
+                  fontWeight: "600",
+                  letterSpacing: 2,
+                  marginTop: -4,
+                }}
+              >
+                {sessionStatus === "resting"
+                  ? "REPOS"
+                  : workout.mode === "duration"
+                    ? `OBJECTIF ${displayTarget}`
+                    : `/ ${displayTarget} ${workout.unit}`}
+              </Text>
 
-            <Text
-              style={{
-                color: "#555555",
-                fontSize: 11,
-                fontWeight: "600",
-                letterSpacing: 1,
-                marginTop: 8,
-              }}
-            >
-              {percentage} %
-            </Text>
-          </Animated.View>
-        </View>
+              {(workout.mode === "sets" ||
+                (workout.mode === "repetitions" &&
+                  workout.structure === "sets_reps")) && (
+                <Text
+                  style={{
+                    color: COLORS.orange,
+                    fontSize: 12,
+                    fontWeight: "700",
+                    letterSpacing: 1.5,
+                    marginTop: 8,
+                  }}
+                >
+                  SÉRIE {currentSet} /{" "}
+                  {workout.mode === "sets"
+                    ? (workout.sets ?? 0)
+                    : Math.ceil(TARGET / (workout.reps ?? TARGET))}
+                </Text>
+              )}
+            </Animated.View>
+          </View>
 
-        {/* =====================================================
-            CONTRÔLES
-            ===================================================== */}
+          {/* =====================================================
+              CONTRÔLES
+              ===================================================== */}
 
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 18,
-            marginTop: 18,
-            paddingHorizontal: 24,
-          }}
-        >
-          {/* MOINS */}
-
-          <TouchableOpacity
-            onPress={handleDecrement}
-            activeOpacity={0.75}
-            style={{
-              width: 62,
-              height: 62,
-              borderRadius: 31,
-              backgroundColor: "#111111",
-              borderWidth: 1,
-              borderColor: "#222222",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name="remove"
-              size={26}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
-
-          {/* PAUSE / REPRISE */}
-
-          <TouchableOpacity
-            onPress={handleTogglePause}
-            activeOpacity={0.8}
-            style={{
-              width: 76,
-              height: 76,
-              borderRadius: 38,
-              backgroundColor: "#FFFFFF",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name={
-                isActive
-                  ? "pause"
-                  : "play"
-              }
-              size={28}
-              color="#000000"
-            />
-          </TouchableOpacity>
-
-          {/* PLUS */}
-
-          <TouchableOpacity
-            onPress={handleIncrement}
-            activeOpacity={0.75}
-            style={{
-              width: 62,
-              height: 62,
-              borderRadius: 31,
-              backgroundColor: "#111111",
-              borderWidth: 1,
-              borderColor: "#222222",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name="add"
-              size={28}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* =====================================================
-            INDICATION
-            ===================================================== */}
-
-        <View
-          style={{
-            alignItems: "center",
-            marginTop: 20,
-            paddingHorizontal: 24,
-          }}
-        >
-          <Text
-            style={{
-              color: "#555555",
-              fontSize: 12,
-              textAlign: "center",
-              letterSpacing: 0.5,
-            }}
-          >
-            {isActive
-              ? "Appuie sur + à chaque répétition"
-              : "Séance en pause"}
-          </Text>
-        </View>
-
-        {/* =====================================================
-            INFORMATIONS DE LA SÉANCE
-            ===================================================== */}
-
-        <View
-          style={{
-            alignItems: "center",
-            marginTop: 24,
-            paddingHorizontal: 24,
-          }}
-        >
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: 18,
+              marginTop: 18,
+              paddingHorizontal: 24,
             }}
           >
-            <Ionicons
-              name="fitness-outline"
-              size={16}
-              color="#444444"
-            />
+            {/* MOINS */}
 
-            <Text
+            {workout.mode !== "duration" && (
+              <TouchableOpacity
+                onPress={handleDecrement}
+                activeOpacity={0.75}
+                style={{
+                  width: 62,
+                  height: 62,
+                  borderRadius: 31,
+                  backgroundColor: COLORS.surfaceLight,
+                  borderWidth: 1,
+                  borderColor: COLORS.controlBorder,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="remove" size={26} color={COLORS.white} />
+              </TouchableOpacity>
+            )}
+
+            {/* PAUSE / REPRISE */}
+
+            <TouchableOpacity
+              onPress={handleTogglePause}
+              activeOpacity={0.8}
               style={{
-                color: "#444444",
-                fontSize: 11,
-                fontWeight: "600",
-                letterSpacing: 0.8,
+                width: 76,
+                height: 76,
+                borderRadius: 38,
+                backgroundColor: COLORS.white,
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              200 SQUATS
+              <Ionicons
+                name={sessionStatus === "active" ? "pause" : "play"}
+                size={28}
+                color={COLORS.black}
+              />
+            </TouchableOpacity>
+
+            {/* PLUS */}
+
+            {workout.mode !== "duration" && (
+              <TouchableOpacity
+                onPress={handleIncrement}
+                activeOpacity={0.75}
+                style={{
+                  width: 62,
+                  height: 62,
+                  borderRadius: 31,
+                  backgroundColor: COLORS.surfaceLight,
+                  borderWidth: 1,
+                  borderColor: COLORS.controlBorder,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="add" size={28} color={COLORS.white} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* =====================================================
+              INDICATION
+              ===================================================== */}
+
+          <View
+            style={{
+              alignItems: "center",
+              marginTop: 20,
+              paddingHorizontal: 24,
+            }}
+          >
+            <Text
+              style={{
+                color: COLORS.gray,
+                fontSize: 12,
+                textAlign: "center",
+                letterSpacing: 0.5,
+              }}
+            >
+              {sessionStatus === "preparation"
+                ? "Appuie sur lecture pour commencer"
+                : sessionStatus === "resting"
+                  ? "Récupération avant la prochaine série"
+                  : sessionStatus === "paused"
+                    ? "Séance en pause"
+                    : workout.mode === "duration"
+                      ? "Le chronomètre tourne automatiquement"
+                      : workout.mode === "sets"
+                        ? "Appuie sur + à chaque répétition"
+                        : workout.mode === "distance"
+                          ? "Ajoute la distance parcourue"
+                          : "Appuie sur + à chaque répétition"}
             </Text>
           </View>
-        </View>
 
-        {/* =====================================================
-            ESPACE BAS
-            ===================================================== */}
+          {/* =====================================================
+              INFORMATIONS DE LA SÉANCE
+              ===================================================== */}
 
-        <View
-          style={{
-            flex: 1,
-          }}
-        />
-      </Animated.View>
-    </LinearGradient>
+          <View
+            style={{
+              alignItems: "center",
+              marginTop: 24,
+              paddingHorizontal: 24,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <Ionicons
+                name="fitness-outline"
+                size={16}
+                color={COLORS.darkestMuted}
+              />
+
+              <Text
+                style={{
+                  color: COLORS.darkestMuted,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  letterSpacing: 0.8,
+                }}
+              >
+                {workout.name.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+
+          {/* =====================================================
+              ESPACE BAS
+              ===================================================== */}
+
+          <View
+            style={{
+              flex: 1,
+            }}
+          />
+        </Animated.View>
+      </LinearGradient>
+    </FadeInView>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
