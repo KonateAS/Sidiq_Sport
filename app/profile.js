@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getWorkoutHistory } from "../lib/workoutStorage";
 import { getPremiumStatus } from "../lib/premiumStorage";
 import { getProgression } from "../lib/progression";
+import PressableScale from "../components/PressableScale";
 
 const USER_NAME_KEY = "sidiq-sport-user-name";
 

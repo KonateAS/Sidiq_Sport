@@ -12,6 +12,7 @@ export default function PressableScale({
   style,
   onPress,
   disabled = false,
+  ...pressableProps
 }) {
   const scale = useSharedValue(1);
 
@@ -23,18 +24,25 @@ export default function PressableScale({
     ],
   }));
 
+  const handlePressIn = () => {
+    if (!disabled) {
+      scale.value = withTiming(0.97, {
+        duration: 100,
+      });
+    }
+  };
+
+  const handlePressOut = () => {
+    scale.value = withTiming(1, {
+      duration: 140,
+    });
+  };
+
   return (
     <AnimatedPressable
-      onPressIn={() => {
-        scale.value = withTiming(0.97, {
-          duration: 100,
-        });
-      }}
-      onPressOut={() => {
-        scale.value = withTiming(1, {
-          duration: 140,
-        });
-      }}
+      {...pressableProps}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       onPress={onPress}
       disabled={disabled}
       style={[animatedStyle, style]}

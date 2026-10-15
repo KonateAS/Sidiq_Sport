@@ -19,20 +19,11 @@ export default function FadeInView({
   const scaleValue = useSharedValue(scale);
 
   useEffect(() => {
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration })
-    );
+    opacity.value = withDelay(delay, withTiming(1, { duration }));
 
-    offset.value = withDelay(
-      delay,
-      withTiming(0, { duration })
-    );
+    offset.value = withDelay(delay, withTiming(0, { duration }));
 
-    scaleValue.value = withDelay(
-      delay,
-      withTiming(1, { duration })
-    );
+    scaleValue.value = withDelay(delay, withTiming(1, { duration }));
   }, [delay, duration, translateY, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -48,8 +39,6 @@ export default function FadeInView({
   }));
 
   return (
-    <Animated.View style={[animatedStyle, style]}>
-      {children}
-    </Animated.View>
+    <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
   );
 }

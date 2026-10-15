@@ -29,31 +29,38 @@ export default function StreakBadge({ days, level }) {
     transform: [{ scale: iconScale.value }],
   }));
 
-  const tiers = {
-    ROOKIE: {
+    const tiers = {
+    DÉBUTANT: {
       icon: "fitness-outline",
       color: "#646464",
     },
-    WARRIOR: {
+    RÉGULIER: {
+      icon: "trending-up-outline",
+      color: "#E85002",
+    },
+    DISCIPLINÉ: {
+      icon: "trophy-outline",
+      color: "#F16001",
+    },
+    ATHLÈTE: {
+      icon: "barbell-outline",
+      color: "#E85002",
+    },
+    GUERRIER: {
       icon: "trophy-outline",
       color: "#E85002",
     },
-    BEAST: {
-      icon: "flash-outline",
-      color: "#C10801",
-    },
-    TITAN: {
-      icon: "diamond-outline",
+    VÉTÉRAN: {
+      icon: "shield-outline",
       color: "#D9C3AB",
     },
-    APEX: {
-      icon: "star-outline",
-      color: "#F16001",
+    ÉLITE: {
+      icon: "diamond-outline",
+      color: "#C10801",
     },
   };
 
-  const tier = tiers[level] || tiers.WARRIOR;
-
+  const tier = tiers[level] || tiers.DÉBUTANT;
   return (
     <LinearGradient
       colors={["#000000", "#140604", "#0B0B0B"]}

@@ -77,6 +77,12 @@ export default function WorkoutScreen() {
 
   const [currentSet, setCurrentSet] = useState(1);
   const [setReps, setSetReps] = useState(0);
+  const setRepsRef = useRef(0);
+
+  const holdIntervalRef = useRef(null);
+  const holdTimeoutRef = useRef(null);
+  const holdActiveRef = useRef(false);
+  const incrementLockRef = useRef(false);
 
   const [isCompleted, setIsCompleted] = useState(false);
 
@@ -127,14 +133,6 @@ export default function WorkoutScreen() {
    * REDIRECTION UTILISATEUR NON PREMIUM
    * ============================================================
    */
-
-  useEffect(() => {
-    if (!premiumChecked || isPremium) {
-      return;
-    }
-
-    router.replace("/premium");
-  }, [premiumChecked, isPremium, router]);
 
   /*
    * ============================================================
@@ -230,6 +228,7 @@ export default function WorkoutScreen() {
           clearInterval(interval);
 
           setCurrentSet((previousSet) => previousSet + 1);
+          setRepsRef.current = 0;
           setSetReps(0);
           setSessionStatus("active");
 
@@ -367,13 +366,15 @@ export default function WorkoutScreen() {
     if (workout.mode === "sets") {
       const targetReps = workout.reps ?? 0;
       const totalSets = workout.sets ?? 0;
+      const currentReps = setRepsRef.current;
 
-      if (setReps >= targetReps) {
+      if (currentReps >= targetReps) {
         return;
       }
 
-      const nextSetReps = setReps + 1;
+      const nextSetReps = currentReps + 1;
 
+      setRepsRef.current = nextSetReps;
       setSetReps(nextSetReps);
 
       animateCounter();
@@ -564,6 +565,19 @@ export default function WorkoutScreen() {
       }, 500);
     }
   };
+  const runIncrement = async () => {
+    if (incrementLockRef.current) {
+      return;
+    }
+
+    incrementLockRef.current = true;
+
+    try {
+      await handleIncrement();
+    } finally {
+      incrementLockRef.current = false;
+    }
+  };
 
   /*
    * ============================================================
@@ -610,6 +624,52 @@ export default function WorkoutScreen() {
     setCount((previous) => Math.max(previous - step, 0));
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+  const stopHold = () => {
+    holdActiveRef.current = false;
+
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+      holdTimeoutRef.current = null;
+    }
+
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+  };
+
+  const startHold = (action) => {
+    stopHold();
+
+    if (
+      isCompleted ||
+      sessionStatus !== "active" ||
+      workout.mode === "duration"
+    ) {
+      return;
+    }
+
+    holdActiveRef.current = true;
+
+    holdTimeoutRef.current = setTimeout(() => {
+      if (!holdActiveRef.current) {
+        return;
+      }
+
+      holdIntervalRef.current = setInterval(() => {
+        if (
+          !holdActiveRef.current ||
+          isCompleted ||
+          sessionStatus !== "active"
+        ) {
+          stopHold();
+          return;
+        }
+
+        action();
+      }, 120);
+    }, 350);
   };
 
   /*
@@ -674,6 +734,7 @@ export default function WorkoutScreen() {
     setCount(0);
     setTimer(0);
     setCurrentSet(1);
+    setRepsRef.current = 0;
     setSetReps(0);
     setRestTimer(0);
     setIsCompleted(false);
@@ -1234,6 +1295,8 @@ export default function WorkoutScreen() {
             {workout.mode !== "duration" && (
               <TouchableOpacity
                 onPress={handleDecrement}
+                onPressIn={() => startHold(handleDecrement)}
+                onPressOut={stopHold}
                 activeOpacity={0.75}
                 style={{
                   width: 62,
@@ -1276,6 +1339,8 @@ export default function WorkoutScreen() {
             {workout.mode !== "duration" && (
               <TouchableOpacity
                 onPress={handleIncrement}
+                onPressIn={() => startHold(handleIncrement)}
+                onPressOut={stopHold}
                 activeOpacity={0.75}
                 style={{
                   width: 62,

@@ -169,6 +169,7 @@ export default function HistoryScreen() {
   const modalScale = useRef(new Animated.Value(0.92)).current;
 
   const modalTranslateY = useRef(new Animated.Value(40)).current;
+  const cardAnimations = useRef(new Map()).current;
 
   const animatedWorkoutKeys = useRef(new Set()).current;
   history.forEach((workout, index) => {
