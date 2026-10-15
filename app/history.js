@@ -170,13 +170,18 @@ export default function HistoryScreen() {
 
   const modalTranslateY = useRef(new Animated.Value(40)).current;
 
-  const cardAnimations = useRef(
-    Array.from({ length: 30 }, () => ({
-      opacity: new Animated.Value(0),
-      translateY: new Animated.Value(24),
-      scale: new Animated.Value(0.97),
-    })),
-  ).current;
+  const animatedWorkoutKeys = useRef(new Set()).current;
+  history.forEach((workout, index) => {
+    const key = String(workout.id || `${workout.date}-${index}`);
+
+    if (!cardAnimations.has(key)) {
+      cardAnimations.set(key, {
+        opacity: new Animated.Value(0),
+        translateY: new Animated.Value(24),
+        scale: new Animated.Value(0.97),
+      });
+    }
+  });
 
   /*
    * ============================================================
@@ -290,21 +295,41 @@ export default function HistoryScreen() {
    */
 
   useEffect(() => {
+    const currentKeys = new Set(
+      history.map((workout, index) =>
+        String(workout.id || `${workout.date}-${index}`),
+      ),
+    );
+
+    animatedWorkoutKeys.forEach((key) => {
+      if (!currentKeys.has(key)) {
+        animatedWorkoutKeys.delete(key);
+      }
+    });
+
     if (history.length === 0) {
       return;
     }
 
-    const animations = cardAnimations.slice(0, history.length);
+    const animationsToRun = history.flatMap((workout, index) => {
+      const key = String(workout.id || `${workout.date}-${index}`);
+      const animation = cardAnimations.get(key);
 
-    animations.forEach((animation) => {
-      animation.opacity.setValue(0);
-      animation.translateY.setValue(28);
-      animation.scale.setValue(0.96);
+      if (!animation || animatedWorkoutKeys.has(key)) {
+        return [];
+      }
+
+      animatedWorkoutKeys.add(key);
+      return [animation];
     });
+
+    if (animationsToRun.length === 0) {
+      return;
+    }
 
     Animated.stagger(
       70,
-      animations.map((animation) =>
+      animationsToRun.map((animation) =>
         Animated.parallel([
           Animated.timing(animation.opacity, {
             toValue: 1,
@@ -328,7 +353,7 @@ export default function HistoryScreen() {
         ]),
       ),
     ).start();
-  }, [history]);
+  }, [history, cardAnimations, animatedWorkoutKeys]);
 
   /*
    * ============================================================
@@ -864,7 +889,9 @@ export default function HistoryScreen() {
                 formatDate={formatDate}
                 formatTime={formatTime}
                 formatDuration={formatDuration}
-                animation={cardAnimations[index]}
+                animation={cardAnimations.get(
+                  String(workout.id || `${workout.date}-${index}`),
+                )}
                 onPress={() => openWorkoutDetails(workout)}
                 onDelete={() => handleDeleteWorkout(workout.id)}
               />
